@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Anton } from "next/font/google";
-
+import Nav from "../components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -102,7 +102,10 @@ export default function RootLayout({
         className={`bg-no-repeat bg-fixed bg h-full bg-cover py-7 ${dmSans.variable} ${anton.variable} ${geistSans.variable} ${geistMono.variable} antialiased font-dmsans`}
         suppressHydrationWarning={true}
       >
-        <main className="mt-28 ">{children}</main>
+        <main className=" ">
+          <Nav />
+          {children}
+        </main>
       </body>
     </html>
   );
