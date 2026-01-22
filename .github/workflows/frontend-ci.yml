@@ -1,0 +1,126 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+
+jobs:
+  frontend-ci:
+    name: Frontend Build and Format Checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      # -----------------------------------
+      # Checkout repository
+      # -----------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -----------------------------------
+      # Set up Node.js environment
+      # -----------------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # -----------------------------------
+      # Detect and set up package manager
+      # -----------------------------------
+      - name: Detect package manager
+        id: pm
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            echo "manager=pnpm" >> $GITHUB_OUTPUT
+          elif [ -f "yarn.lock" ]; then
+            echo "manager=yarn" >> $GITHUB_OUTPUT
+          else
+            echo "manager=npm" >> $GITHUB_OUTPUT
+          fi
+
+      # -----------------------------------
+      # Set up pnpm (if using pnpm)
+      # -----------------------------------
+      - name: Set up pnpm
+        if: steps.pm.outputs.manager == 'pnpm'
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      # -----------------------------------
+      # Cache dependencies
+      # -----------------------------------
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            .next/cache
+          key: ${{ runner.os }}-deps-${{ hashFiles('frontend/package-lock.json', 'frontend/pnpm-lock.yaml', 'frontend/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      # -----------------------------------
+      # Install dependencies
+      # -----------------------------------
+      - name: Install dependencies
+        run: |
+          if [ "${{ steps.pm.outputs.manager }}" = "pnpm" ]; then
+            pnpm install --frozen-lockfile
+          elif [ "${{ steps.pm.outputs.manager }}" = "yarn" ]; then
+            yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+
+      # -----------------------------------
+      # Format check (ESLint)
+      # -----------------------------------
+      - name: Format check
+        run: |
+          if [ "${{ steps.pm.outputs.manager }}" = "pnpm" ]; then
+            pnpm lint
+          elif [ "${{ steps.pm.outputs.manager }}" = "yarn" ]; then
+            yarn lint
+          else
+            npm run lint
+          fi
+        continue-on-error: true
+
+      # -----------------------------------
+      # Build check
+      # -----------------------------------
+      - name: Build frontend
+        run: |
+          if [ "${{ steps.pm.outputs.manager }}" = "pnpm" ]; then
+            pnpm build
+          elif [ "${{ steps.pm.outputs.manager }}" = "yarn" ]; then
+            yarn build
+          else
+            npm run build
+          fi
+
+      # -----------------------------------
+      # Report build status
+      # -----------------------------------
+      - name: Report status
+        if: failure()
+        run: |
+          echo "❌ CI checks failed!"
+          echo "Please ensure:"
+          echo "  - Code builds successfully (npm run build)"
+          echo "  - Code formatting is correct (npm run lint)"
+          exit 1
