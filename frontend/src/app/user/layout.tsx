@@ -1,7 +1,3 @@
-export  default function Layout() {
-  return (
-    <div>
-      <h1>User Layout</h1>
-    </div>
-  )
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }
