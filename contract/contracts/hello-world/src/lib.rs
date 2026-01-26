@@ -20,6 +20,26 @@ pub struct AutoShareContract;
 
 #[contractimpl]
 impl AutoShareContract {
+    /// Initializes the contract with an admin address.
+    pub fn initialize(env: Env, admin: Address) {
+        autoshare_logic::set_admin(env, admin).unwrap();
+    }
+
+    /// Pauses the contract. Only admin can call.
+    pub fn pause(env: Env, admin: Address) {
+        autoshare_logic::pause(env, admin).unwrap();
+    }
+
+    /// Unpauses the contract. Only admin can call.
+    pub fn unpause(env: Env, admin: Address) {
+        autoshare_logic::unpause(env, admin).unwrap();
+    }
+
+    /// Returns the current pause status.
+    pub fn get_paused_status(env: Env) -> bool {
+        autoshare_logic::get_paused_status(&env)
+    }
+
     /// Creates a new AutoShare plan.
     /// Requirement: create_autoshare should store data and emit an event.
     pub fn create(env: Env, id: BytesN<32>, name: String, creator: Address) {
@@ -62,3 +82,7 @@ impl AutoShareContract {
 #[cfg(test)]
 #[path = "tests/autoshare_test.rs"]
 mod autoshare_test; // Links the internal tests/autoshare_test.rs inside src
+
+#[cfg(test)]
+#[path = "tests/pause_test.rs"]
+mod pause_test;

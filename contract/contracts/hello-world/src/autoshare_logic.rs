@@ -1,5 +1,5 @@
 use crate::base::errors::Error;
-use crate::base::events::emit_autoshare_created;
+use crate::base::events::{emit_autoshare_created, emit_contract_paused, emit_contract_unpaused};
 use crate::base::types::{AutoShareDetails, GroupMember};
 use soroban_sdk::{contracttype, Address, BytesN, Env, String, Vec};
 
@@ -8,7 +8,93 @@ pub enum DataKey {
     AutoShare(BytesN<32>),
     GroupMembers(BytesN<32>),
     AllGroups,
+    Admin,
+    IsPaused,
 }
+
+// ============ Admin Functions ============
+
+pub fn set_admin(env: Env, admin: Address) -> Result<(), Error> {
+    if env.storage().persistent().has(&DataKey::Admin) {
+        return Err(Error::AlreadyExists);
+    }
+    env.storage().persistent().set(&DataKey::Admin, &admin);
+    Ok(())
+}
+
+// ============ Pause Functions ============
+
+pub fn pause(env: Env, admin: Address) -> Result<(), Error> {
+    admin.require_auth();
+
+    let stored_admin: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .ok_or(Error::Unauthorized)?;
+
+    if admin != stored_admin {
+        return Err(Error::Unauthorized);
+    }
+
+    let is_paused: bool = env
+        .storage()
+        .persistent()
+        .get(&DataKey::IsPaused)
+        .unwrap_or(false);
+
+    if is_paused {
+        return Err(Error::AlreadyPaused);
+    }
+
+    env.storage().persistent().set(&DataKey::IsPaused, &true);
+    emit_contract_paused(&env);
+    Ok(())
+}
+
+pub fn unpause(env: Env, admin: Address) -> Result<(), Error> {
+    admin.require_auth();
+
+    let stored_admin: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .ok_or(Error::Unauthorized)?;
+
+    if admin != stored_admin {
+        return Err(Error::Unauthorized);
+    }
+
+    let is_paused: bool = env
+        .storage()
+        .persistent()
+        .get(&DataKey::IsPaused)
+        .unwrap_or(false);
+
+    if !is_paused {
+        return Err(Error::NotPaused);
+    }
+
+    env.storage().persistent().set(&DataKey::IsPaused, &false);
+    emit_contract_unpaused(&env);
+    Ok(())
+}
+
+pub fn get_paused_status(env: &Env) -> bool {
+    env.storage()
+        .persistent()
+        .get(&DataKey::IsPaused)
+        .unwrap_or(false)
+}
+
+fn require_not_paused(env: &Env) -> Result<(), Error> {
+    if get_paused_status(env) {
+        return Err(Error::ContractPaused);
+    }
+    Ok(())
+}
+
+// ============ AutoShare Functions ============
 
 pub fn create_autoshare(
     env: Env,
@@ -16,6 +102,8 @@ pub fn create_autoshare(
     name: String,
     creator: Address,
 ) -> Result<(), Error> {
+    require_not_paused(&env)?;
+
     let key = DataKey::AutoShare(id.clone());
 
     // Check if it already exists to prevent overwriting
@@ -126,6 +214,8 @@ pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, E
 }
 
 pub fn add_group_member(env: Env, id: BytesN<32>, address: Address) -> Result<(), Error> {
+    require_not_paused(&env)?;
+
     // First check if the group exists
     let group_key = DataKey::AutoShare(id.clone());
     if !env.storage().persistent().has(&group_key) {
