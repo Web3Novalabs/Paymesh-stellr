@@ -12,8 +12,6 @@ pub enum DataKey {
     IsPaused,
 }
 
-// ============ Admin Functions ============
-
 pub fn set_admin(env: Env, admin: Address) -> Result<(), Error> {
     if env.storage().persistent().has(&DataKey::Admin) {
         return Err(Error::AlreadyExists);
@@ -21,8 +19,6 @@ pub fn set_admin(env: Env, admin: Address) -> Result<(), Error> {
     env.storage().persistent().set(&DataKey::Admin, &admin);
     Ok(())
 }
-
-// ============ Pause Functions ============
 
 pub fn pause(env: Env, admin: Address) -> Result<(), Error> {
     admin.require_auth();
@@ -93,8 +89,6 @@ fn require_not_paused(env: &Env) -> Result<(), Error> {
     }
     Ok(())
 }
-
-// ============ AutoShare Functions ============
 
 pub fn create_autoshare(
     env: Env,
