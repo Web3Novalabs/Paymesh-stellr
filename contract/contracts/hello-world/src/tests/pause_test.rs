@@ -169,7 +169,11 @@ fn test_read_functions_work_when_paused() {
     let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
-    let members = Vec::new(&env);
+    let mut members = Vec::new(&env);
+    members.push_back(crate::base::types::GroupMember {
+        address: creator.clone(),
+        percentage: 100,
+    });
 
     client.create(&id, &name, &creator, &members);
     client.pause(&admin);
@@ -199,7 +203,11 @@ fn test_operations_work_after_unpause() {
     let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
-    let members = Vec::new(&env);
+    let mut members = Vec::new(&env);
+    members.push_back(crate::base::types::GroupMember {
+        address: creator.clone(),
+        percentage: 100,
+    });
 
     // Should work after unpause
     client.create(&id, &name, &creator, &members);
