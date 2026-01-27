@@ -1,5 +1,7 @@
 use crate::base::errors::Error;
-use crate::base::events::{emit_autoshare_created, emit_autoshare_updated, emit_contract_paused, emit_contract_unpaused};
+use crate::base::events::{
+    emit_autoshare_created, emit_autoshare_updated, emit_contract_paused, emit_contract_unpaused,
+};
 use crate::base::types::{AutoShareDetails, GroupMember};
 use soroban_sdk::{contracttype, Address, BytesN, Env, String, Vec};
 
@@ -254,7 +256,12 @@ pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, E
     Ok(members)
 }
 
-pub fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: u32) -> Result<(), Error> {
+pub fn add_group_member(
+    env: Env,
+    id: BytesN<32>,
+    address: Address,
+    percentage: u32,
+) -> Result<(), Error> {
     require_not_paused(&env)?;
 
     // First check if the group exists
@@ -277,7 +284,10 @@ pub fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: 
         }
     }
 
-    members.push_back(GroupMember { address, percentage });
+    members.push_back(GroupMember {
+        address,
+        percentage,
+    });
     env.storage().persistent().set(&members_key, &members);
     Ok(())
 }

@@ -130,7 +130,7 @@ fn test_create_fails_when_paused() {
     let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
-    let members = Vec::new(&env); 
+    let members = Vec::new(&env);
     client.create(&id, &name, &creator, &members);
 }
 
