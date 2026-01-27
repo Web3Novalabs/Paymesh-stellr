@@ -62,7 +62,7 @@ pub fn mint_tokens(env: &Env, token: &Address, to: &Address, amount: i128) {
 // MockToken doesn't support approve, but we implement the signature as requested.
 // We'll log or do nothing if not supported, but here it's a test util, so we can't really "fake" it if the contract doesn't support it.
 // Assuming for now we might add standard token interface later or this is for a different token.
-pub fn approve_tokens(env: &Env, token: &Address, from: &Address, spender: &Address, amount: i128) {
+pub fn approve_tokens(_env: &Env, _token: &Address, _from: &Address, _spender: &Address, _amount: i128) {
     // Note: MockToken provided in this repo does not support approve/allowance.
     // usage of this function with current MockToken will fail if we try to call non-existent method.
     // For now we will look for 'approve' method on client, if not generic refactor might be needed.
@@ -100,11 +100,11 @@ pub fn create_test_group(
     contract: &Address,
     creator: &Address,
     _members: &Vec<crate::base::types::GroupMember>,
-    _usages: u32,
+    usages: u32,
     _token: &Address,
 ) -> BytesN<32> {
     let client = AutoShareContractClient::new(env, contract);
-    let id = BytesN::from_array(env, &[10u8; 32]); // Generate a deterministic or random ID? Contract requires unique.
+    let _id = BytesN::from_array(env, &[10u8; 32]); // Generate a deterministic or random ID? Contract requires unique.
     // For test utils, maybe we want random to avoid collision if called multiple times.
     // But `BytesN::from_array` needs a fixed array.
     // Let's use a counter or random bytes. 

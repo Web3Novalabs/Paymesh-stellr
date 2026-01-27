@@ -7,7 +7,7 @@ fn test_mock_token() {
     let test_env = setup_test_env();
     let env = &test_env.env;
 
-    let admin = Address::generate(env);
+    let _admin = Address::generate(env);
     let user1 = Address::generate(env);
     let user2 = Address::generate(env);
 

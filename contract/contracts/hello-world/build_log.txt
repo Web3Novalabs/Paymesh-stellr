@@ -1,0 +1,234 @@
+   Compiling hello-world v0.0.0 (C:\Users\Lenovo N24\Desktop\Paymesh-stellr\contract\contracts\hello-world)
+error[E0425]: cannot find value `usages` in this scope
+   --> contracts\hello-world\src\tests\test_utils.rs:118:37
+    |
+103 |     _usages: u32,
+    |     ------- `_usages` defined here
+...
+118 |     id_bytes[0..4].copy_from_slice(&usages.to_be_bytes());
+    |                                     ^^^^^^
+    |
+help: the leading underscore in `_usages` marks it as unused, consider renaming it to `usages`
+    |
+103 -     _usages: u32,
+103 +     usages: u32,
+    |
+
+warning: unused import: `AutoShareContract`
+ --> contracts\hello-world\src\tests\autoshare_test.rs:1:13
+  |
+1 | use crate::{AutoShareContract, AutoShareContractClient};
+  |             ^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:12:33
+   |
+12 |     let creator = test_env.users[0].clone();
+   |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:14:37
+   |
+14 |     let token = test_env.mock_tokens[0].clone();
+   |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:29:33
+   |
+29 |     let creator = test_env.users[0].clone();
+   |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:31:37
+   |
+31 |     let token = test_env.mock_tokens[0].clone();
+   |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:62:34
+   |
+62 |     let creator1 = test_env.users[0].clone();
+   |                                  ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:63:34
+   |
+63 |     let creator2 = test_env.users[1].clone();
+   |                                  ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:65:37
+   |
+65 |     let token = test_env.mock_tokens[0].clone();
+   |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:83:33
+   |
+83 |     let creator = test_env.users[0].clone();
+   |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:93:34
+   |
+93 |     let creator1 = test_env.users[0].clone();
+   |                                  ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:94:34
+   |
+94 |     let creator2 = test_env.users[1].clone();
+   |                                  ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+  --> contracts\hello-world\src\tests\autoshare_test.rs:96:37
+   |
+96 |     let token = test_env.mock_tokens[0].clone();
+   |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:117:33
+    |
+117 |     let creator = test_env.users[0].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:118:32
+    |
+118 |     let member = test_env.users[1].clone();
+    |                                ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:120:37
+    |
+120 |     let token = test_env.mock_tokens[0].clone();
+    |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:133:33
+    |
+133 |     let creator = test_env.users[0].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:134:32
+    |
+134 |     let member = test_env.users[1].clone();
+    |                                ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:136:37
+    |
+136 |     let token = test_env.mock_tokens[0].clone();
+    |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:151:32
+    |
+151 |     let member = test_env.users[0].clone();
+    |                                ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:162:33
+    |
+162 |     let creator = test_env.users[0].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:164:37
+    |
+164 |     let token = test_env.mock_tokens[0].clone();
+    |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:177:33
+    |
+177 |     let creator = test_env.users[0].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:178:33
+    |
+178 |     let member1 = test_env.users[1].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:179:33
+    |
+179 |     let member2 = test_env.users[2].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:182:37
+    |
+182 |     let token = test_env.mock_tokens[0].clone();
+    |                                     ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:212:32
+    |
+212 |     let member = test_env.users[0].clone();
+    |                                ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:223:33
+    |
+223 |     let creator = test_env.users[0].clone();
+    |                                 ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:224:32
+    |
+224 |     let member = test_env.users[1].clone();
+    |                                ^^^
+
+error[E0608]: cannot index into a value of type `soroban_sdk::Vec<soroban_sdk::Address>`
+   --> contracts\hello-world\src\tests\autoshare_test.rs:226:37
+    |
+226 |     let token = test_env.mock_tokens[0].clone();
+    |                                     ^^^
+
+warning: unused variable: `admin`
+  --> contracts\hello-world\src\tests\mock_token_test.rs:10:9
+   |
+10 |     let admin = Address::generate(env);
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_admin`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `env`
+  --> contracts\hello-world\src\tests\test_utils.rs:65:23
+   |
+65 | pub fn approve_tokens(env: &Env, token: &Address, from: &Address, spender: &Address, amount: i128) {
+   |                       ^^^ help: if this is intentional, prefix it with an underscore: `_env`
+
+warning: unused variable: `token`
+  --> contracts\hello-world\src\tests\test_utils.rs:65:34
+   |
+65 | pub fn approve_tokens(env: &Env, token: &Address, from: &Address, spender: &Address, amount: i128) {
+   |                                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_token`
+
+warning: unused variable: `from`
+  --> contracts\hello-world\src\tests\test_utils.rs:65:51
+   |
+65 | pub fn approve_tokens(env: &Env, token: &Address, from: &Address, spender: &Address, amount: i128) {
+   |                                                   ^^^^ help: if this is intentional, prefix it with an underscore: `_from`
+
+warning: unused variable: `spender`
+  --> contracts\hello-world\src\tests\test_utils.rs:65:67
+   |
+65 | pub fn approve_tokens(env: &Env, token: &Address, from: &Address, spender: &Address, amount: i128) {
+   |                                                                   ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_spender`
+
+warning: unused variable: `amount`
+  --> contracts\hello-world\src\tests\test_utils.rs:65:86
+   |
+65 | pub fn approve_tokens(env: &Env, token: &Address, from: &Address, spender: &Address, amount: i128) {
+   |                                                                                      ^^^^^^ help: if this is intentional, prefix it with an underscore: `_amount`
+
+Some errors have detailed explanations: E0425, E0608.
+For more information about an error, try `rustc --explain E0425`.
+warning: `hello-world` (lib test) generated 7 warnings
+error: could not compile `hello-world` (lib test) due to 29 previous errors; 7 warnings emitted
