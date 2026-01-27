@@ -8,10 +8,12 @@ import TestimonialsSection from "./landing/components/TestimonialsSection";
 import StatsSection from "./landing/components/StatsSection";
 import FaqSection from "./landing/components/FaqSection";
 import Footer from "./landing/components/Footer";
+import { Navbar } from "@/components/Navbar";
 
 export default function Page() {
   return (
     <main className="min-h-screen w-full text-white overflow-x-hidden">
+      <Navbar />
       <HeroSection />
       <div className="py-25">
         <IntroSection />
