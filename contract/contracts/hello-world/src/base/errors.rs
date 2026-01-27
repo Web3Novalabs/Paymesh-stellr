@@ -11,4 +11,6 @@ pub enum Error {
     AlreadyPaused = 5,
     NotPaused = 6,
     Unauthorized = 7,
+    InsufficientBalance = 8,
+    InvalidAmount = 9,
 }

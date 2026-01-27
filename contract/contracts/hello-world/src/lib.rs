@@ -86,3 +86,8 @@ mod autoshare_test; // Links the internal tests/autoshare_test.rs inside src
 #[cfg(test)]
 #[path = "tests/pause_test.rs"]
 mod pause_test;
+pub mod mock_token;
+
+#[cfg(test)]
+#[path = "tests/mock_token_test.rs"]
+mod mock_token_test;
