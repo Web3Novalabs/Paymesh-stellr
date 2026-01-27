@@ -68,3 +68,11 @@ pub mod mock_token;
 #[cfg(test)]
 #[path = "tests/mock_token_test.rs"]
 mod mock_token_test;
+
+#[cfg(test)]
+#[path = "tests/test_utils.rs"]
+pub mod test_utils;
+
+#[cfg(test)]
+#[path = "tests/test_utils_test.rs"]
+mod test_utils_test;
