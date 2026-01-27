@@ -1,10 +1,28 @@
+"use client";
 
+import React from "react";
+import HeroSection from "./landing/components/HeroSection";
+import IntroSection from "./landing/components/IntroSection";
+import FeaturesSection from "./landing/components/FeaturesSection";
+import TestimonialsSection from "./landing/components/TestimonialsSection";
+import StatsSection from "./landing/components/StatsSection";
+import FaqSection from "./landing/components/FaqSection";
+import Footer from "./landing/components/Footer";
+import { Navbar } from "@/components/Navbar";
 
-export default function Home() {
+export default function Page() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-4xl font-bold mb-4">Welcome to Paymesh</h1>
-      <p className="text-lg mb-8">An automated group payment on Stellar.</p>
-    </div>
+    <main className="min-h-screen w-full text-white overflow-x-hidden">
+      <Navbar />
+      <HeroSection />
+      <div className="py-25">
+        <IntroSection />
+        <FeaturesSection />
+      </div>
+      <TestimonialsSection />
+      <StatsSection />
+      <FaqSection />
+      <Footer />
+    </main>
   );
 }

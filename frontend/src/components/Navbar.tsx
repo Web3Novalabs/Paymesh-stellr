@@ -43,7 +43,7 @@ export function Navbar() {
           </div>
 
           {/* Connect Button (Desktop) */}
-          <div className="hidden md:block">
+          <div className="hidden md:block cursor-pointer">
             <ConnectWalletButton />
           </div>
 

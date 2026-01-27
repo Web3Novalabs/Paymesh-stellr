@@ -18,3 +18,7 @@ pub fn emit_contract_unpaused(env: &Env) {
     let topics = (symbol_short!("unpause"),);
     env.events().publish(topics, ());
 }
+pub fn emit_autoshare_updated(env: &Env, id: BytesN<32>, updater: Address) {
+    let topics = (symbol_short!("updated"), updater);
+    env.events().publish(topics, id);
+}

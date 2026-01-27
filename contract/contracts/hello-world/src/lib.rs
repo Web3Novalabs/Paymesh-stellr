@@ -44,8 +44,25 @@ impl AutoShareContract {
 
     /// Creates a new AutoShare plan.
     /// Requirement: create_autoshare should store data and emit an event.
-    pub fn create(env: Env, id: BytesN<32>, name: String, creator: Address) {
-        autoshare_logic::create_autoshare(env, id, name, creator).unwrap();
+    pub fn create(
+        env: Env,
+        id: BytesN<32>,
+        name: String,
+        creator: Address,
+        members: Vec<base::types::GroupMember>,
+    ) {
+        autoshare_logic::create_autoshare(env, id, name, creator, members).unwrap();
+    }
+
+    /// Update members of an existing AutoShare plan.
+    /// Requirement: Only creator can update. Validates percentages.
+    pub fn update_members(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_members: Vec<base::types::GroupMember>,
+    ) {
+        autoshare_logic::update_members(env, id, caller, new_members).unwrap();
     }
 
     /// Retrieves an existing AutoShare plan.
@@ -69,14 +86,13 @@ impl AutoShareContract {
         autoshare_logic::is_group_member(env, id, address).unwrap()
     }
 
-    /// Retrieves all members of a specific group.
     pub fn get_group_members(env: Env, id: BytesN<32>) -> Vec<base::types::GroupMember> {
         autoshare_logic::get_group_members(env, id).unwrap()
     }
 
-    /// Adds a member to a specific group.
-    pub fn add_group_member(env: Env, id: BytesN<32>, address: Address) {
-        autoshare_logic::add_group_member(env, id, address).unwrap();
+    /// Adds a member to a group with specified percentage.
+    pub fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: u32) {
+        autoshare_logic::add_group_member(env, id, address, percentage).unwrap();
     }
 }
 

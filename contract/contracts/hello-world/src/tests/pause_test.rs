@@ -1,5 +1,5 @@
 use crate::{AutoShareContract, AutoShareContractClient};
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
 
 #[test]
 fn test_admin_can_pause() {
@@ -130,7 +130,8 @@ fn test_create_fails_when_paused() {
     let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
-    client.create(&id, &name, &creator);
+    let members = Vec::new(&env); 
+    client.create(&id, &name, &creator, &members);
 }
 
 #[test]
@@ -148,10 +149,11 @@ fn test_add_member_fails_when_paused() {
     let member = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
+    let members = Vec::new(&env);
 
-    client.create(&id, &name, &creator);
+    client.create(&id, &name, &creator, &members);
     client.pause(&admin);
-    client.add_group_member(&id, &member);
+    client.add_group_member(&id, &member, &50u32);
 }
 
 #[test]
@@ -167,8 +169,9 @@ fn test_read_functions_work_when_paused() {
     let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
+    let members = Vec::new(&env);
 
-    client.create(&id, &name, &creator);
+    client.create(&id, &name, &creator, &members);
     client.pause(&admin);
 
     // These should all work while paused
@@ -196,9 +199,10 @@ fn test_operations_work_after_unpause() {
     let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Test Group");
+    let members = Vec::new(&env);
 
     // Should work after unpause
-    client.create(&id, &name, &creator);
+    client.create(&id, &name, &creator, &members);
     let result = client.get(&id);
     assert_eq!(result.name, name);
 }

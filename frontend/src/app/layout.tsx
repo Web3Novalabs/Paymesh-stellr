@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { DM_Sans, Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist, Geist_Mono, Anton } from "next/font/google";
 import "./globals.css";
-import { Anton } from "next/font/google";
-
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -99,10 +97,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`bg-no-repeat bg-fixed bg h-full bg-cover py-7 ${dmSans.variable} ${anton.variable} ${geistSans.variable} ${geistMono.variable} antialiased font-dmsans`}
+        className={`bg-no-repeat bg-fixed bg h-full bg-cover ${dmSans.variable} ${anton.variable} ${geistSans.variable} ${geistMono.variable} antialiased font-dmsans`}
         suppressHydrationWarning={true}
       >
-        <main className="mt-28 ">{children}</main>
+        {children}
       </body>
     </html>
   );

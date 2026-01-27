@@ -12,7 +12,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, label, error, leftIcon, id, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const [inputType, setInputType] = React.useState(type);
-    const inputId = id || `input-${React.useId()}`;
+    const generatedId = React.useId();
+    const inputId = id || `input-${generatedId}`;
 
     React.useEffect(() => {
       if (type === "password") {
@@ -23,7 +24,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-muted-foreground mb-2">
+          <label
+            htmlFor={inputId}
+            className="block text-sm font-medium text-muted-foreground mb-2"
+          >
             {label}
           </label>
         )}
@@ -43,7 +47,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               error && "border-destructive focus-visible:ring-destructive",
               leftIcon && "pl-10",
               type === "password" && "pr-10",
-              className
+              className,
             )}
             ref={ref}
             {...props}
@@ -55,14 +59,18 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               tabIndex={-1}
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           )}
         </div>
         {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = "Input";

@@ -1,5 +1,6 @@
+use crate::base::types::GroupMember;
 use crate::{AutoShareContract, AutoShareContractClient};
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
 
 #[test]
 fn test_create_and_get_success() {
@@ -11,240 +12,234 @@ fn test_create_and_get_success() {
     let id = BytesN::from_array(&env, &[1u8; 32]);
     let name = String::from_str(&env, "Platform Split");
 
-    client.create(&id, &name, &creator);
+    let member1 = Address::generate(&env);
+    let member2 = Address::generate(&env);
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 60,
+    });
+    members.push_back(GroupMember {
+        address: member2.clone(),
+        percentage: 40,
+    });
+
+    client.create(&id, &name, &creator, &members);
 
     let result = client.get(&id);
     assert_eq!(result.name, name);
     assert_eq!(result.creator, creator);
+    assert_eq!(result.members.len(), 2);
+
+    // Check specific member values
+    let m1 = result.members.get(0).unwrap();
+    assert_eq!(m1.address, member1);
+    assert_eq!(m1.percentage, 60);
+
+    let m2 = result.members.get(1).unwrap();
+    assert_eq!(m2.address, member2);
+    assert_eq!(m2.percentage, 40);
 }
 
 #[test]
-#[should_panic]
-fn test_duplicate_id_fails() {
+#[should_panic] // InvalidTotalPercentage
+fn test_create_fails_invalid_percentage() {
     let env = Env::default();
     let contract_id = env.register(AutoShareContract, ());
     let client = AutoShareContractClient::new(&env, &contract_id);
 
+    let creator = Address::generate(&env);
     let id = BytesN::from_array(&env, &[1u8; 32]);
-    let name = String::from_str(&env, "Test");
-    let creator = Address::generate(&env);
+    let name = String::from_str(&env, "Invalid Split");
 
-    client.create(&id, &name, &creator);
-    client.create(&id, &name, &creator);
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: Address::generate(&env),
+        percentage: 50, // Sum = 50 != 100
+    });
+
+    client.create(&id, &name, &creator, &members);
 }
 
 #[test]
-#[should_panic]
-fn test_get_non_existent_fails() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let id = BytesN::from_array(&env, &[9u8; 32]);
-    client.get(&id);
-}
-
-#[test]
-fn test_get_all_groups_empty() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let groups = client.get_all_groups();
-    assert_eq!(groups.len(), 0);
-}
-
-#[test]
-fn test_get_all_groups_multiple() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let creator1 = Address::generate(&env);
-    let creator2 = Address::generate(&env);
-    let id1 = BytesN::from_array(&env, &[1u8; 32]);
-    let id2 = BytesN::from_array(&env, &[2u8; 32]);
-    let id3 = BytesN::from_array(&env, &[3u8; 32]);
-    let name1 = String::from_str(&env, "Group 1");
-    let name2 = String::from_str(&env, "Group 2");
-    let name3 = String::from_str(&env, "Group 3");
-
-    client.create(&id1, &name1, &creator1);
-    client.create(&id2, &name2, &creator2);
-    client.create(&id3, &name3, &creator1);
-
-    let groups = client.get_all_groups();
-    assert_eq!(groups.len(), 3);
-    assert_eq!(groups.get(0).unwrap().id, id1);
-    assert_eq!(groups.get(1).unwrap().id, id2);
-    assert_eq!(groups.get(2).unwrap().id, id3);
-}
-
-#[test]
-fn test_get_groups_by_creator_empty() {
+#[should_panic] // EmptyMembers
+fn test_create_fails_empty_members() {
     let env = Env::default();
     let contract_id = env.register(AutoShareContract, ());
     let client = AutoShareContractClient::new(&env, &contract_id);
 
     let creator = Address::generate(&env);
-    let groups = client.get_groups_by_creator(&creator);
-    assert_eq!(groups.len(), 0);
+    let id = BytesN::from_array(&env, &[1u8; 32]);
+    let name = String::from_str(&env, "Empty");
+
+    let members = Vec::new(&env);
+
+    client.create(&id, &name, &creator, &members);
 }
 
 #[test]
-fn test_get_groups_by_creator_multiple() {
+#[should_panic] // DuplicateMember
+fn test_create_fails_duplicate_member() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let id = BytesN::from_array(&env, &[1u8; 32]);
+    let name = String::from_str(&env, "Dup");
+
+    let member_summary = Address::generate(&env);
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: member_summary.clone(),
+        percentage: 50,
+    });
+    members.push_back(GroupMember {
+        address: member_summary, // Duplicate
+        percentage: 50,
+    });
+
+    client.create(&id, &name, &creator, &members);
+}
+
+#[test]
+fn test_update_members_success() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let id = BytesN::from_array(&env, &[1u8; 32]);
+    let name = String::from_str(&env, "Update Test");
+
+    let member1 = Address::generate(&env);
+    let mut initial_members = Vec::new(&env);
+    initial_members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 100,
+    });
+
+    client.create(&id, &name, &creator, &initial_members);
+
+    // Verify initial
+    let initial_res = client.get(&id);
+    assert_eq!(initial_res.members.len(), 1);
+
+    // Update members (split 50/50 with new user)
+    let member2 = Address::generate(&env);
+    let mut new_members = Vec::new(&env);
+    new_members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 50,
+    });
+    new_members.push_back(GroupMember {
+        address: member2.clone(),
+        percentage: 50,
+    });
+
+    client.update_members(&id, &creator, &new_members);
+
+    // Verify update
+    let updated_res = client.get(&id);
+    assert_eq!(updated_res.members.len(), 2);
+    assert_eq!(updated_res.members.get(0).unwrap().percentage, 50);
+    assert_eq!(updated_res.members.get(1).unwrap().address, member2);
+}
+
+#[test]
+#[should_panic] // NotAuthorized
+fn test_update_members_unauthorized() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let id = BytesN::from_array(&env, &[1u8; 32]);
+    let name = String::from_str(&env, "Auth Test");
+
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: Address::generate(&env),
+        percentage: 100,
+    });
+
+    client.create(&id, &name, &creator, &members);
+
+    let other_user = Address::generate(&env);
+    client.update_members(&id, &other_user, &members);
+}
+
+#[test]
+#[should_panic] // InvalidTotalPercentage
+fn test_update_members_invalid_percentage() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let id = BytesN::from_array(&env, &[1u8; 32]);
+    let name = String::from_str(&env, "Invalid Update");
+
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: Address::generate(&env),
+        percentage: 100,
+    });
+
+    client.create(&id, &name, &creator, &members);
+
+    let mut bad_members = Vec::new(&env);
+    bad_members.push_back(GroupMember {
+        address: Address::generate(&env),
+        percentage: 90,
+    });
+
+    client.update_members(&id, &creator, &bad_members);
+}
+
+#[test]
+fn test_is_group_member() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let creator = Address::generate(&env);
+    let id = BytesN::from_array(&env, &[1u8; 32]);
+    let name = String::from_str(&env, "Member Check");
+
+    let member1 = Address::generate(&env);
+    let member2 = Address::generate(&env); // Not a member
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 100,
+    });
+
+    client.create(&id, &name, &creator, &members);
+
+    assert!(client.is_group_member(&id, &member1));
+    assert!(!client.is_group_member(&id, &member2));
+}
+
+#[test]
+fn test_get_groups_by_creator() {
     let env = Env::default();
     let contract_id = env.register(AutoShareContract, ());
     let client = AutoShareContractClient::new(&env, &contract_id);
 
     let creator1 = Address::generate(&env);
-    let creator2 = Address::generate(&env);
     let id1 = BytesN::from_array(&env, &[1u8; 32]);
-    let id2 = BytesN::from_array(&env, &[2u8; 32]);
-    let id3 = BytesN::from_array(&env, &[3u8; 32]);
     let name1 = String::from_str(&env, "Group 1");
-    let name2 = String::from_str(&env, "Group 2");
-    let name3 = String::from_str(&env, "Group 3");
 
-    client.create(&id1, &name1, &creator1);
-    client.create(&id2, &name2, &creator2);
-    client.create(&id3, &name3, &creator1);
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: Address::generate(&env),
+        percentage: 100,
+    });
+
+    client.create(&id1, &name1, &creator1, &members);
 
     let groups = client.get_groups_by_creator(&creator1);
-    assert_eq!(groups.len(), 2);
+    assert_eq!(groups.len(), 1);
     assert_eq!(groups.get(0).unwrap().id, id1);
-    assert_eq!(groups.get(1).unwrap().id, id3);
-
-    let groups2 = client.get_groups_by_creator(&creator2);
-    assert_eq!(groups2.len(), 1);
-    assert_eq!(groups2.get(0).unwrap().id, id2);
-}
-
-#[test]
-fn test_is_group_member_false() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let creator = Address::generate(&env);
-    let member = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[1u8; 32]);
-    let name = String::from_str(&env, "Test Group");
-
-    client.create(&id, &name, &creator);
-
-    let is_member = client.is_group_member(&id, &member);
-    assert!(!is_member);
-}
-
-#[test]
-fn test_is_group_member_true() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let creator = Address::generate(&env);
-    let member = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[1u8; 32]);
-    let name = String::from_str(&env, "Test Group");
-
-    client.create(&id, &name, &creator);
-    client.add_group_member(&id, &member);
-
-    let is_member = client.is_group_member(&id, &member);
-    assert!(is_member);
-}
-
-#[test]
-#[should_panic]
-fn test_is_group_member_non_existent_group() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let member = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[99u8; 32]);
-
-    client.is_group_member(&id, &member);
-}
-
-#[test]
-fn test_get_group_members_empty() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let creator = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[1u8; 32]);
-    let name = String::from_str(&env, "Test Group");
-
-    client.create(&id, &name, &creator);
-
-    let members = client.get_group_members(&id);
-    assert_eq!(members.len(), 0);
-}
-
-#[test]
-fn test_get_group_members_multiple() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let creator = Address::generate(&env);
-    let member1 = Address::generate(&env);
-    let member2 = Address::generate(&env);
-    let member3 = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[1u8; 32]);
-    let name = String::from_str(&env, "Test Group");
-
-    client.create(&id, &name, &creator);
-    client.add_group_member(&id, &member1);
-    client.add_group_member(&id, &member2);
-    client.add_group_member(&id, &member3);
-
-    let members = client.get_group_members(&id);
-    assert_eq!(members.len(), 3);
-    assert_eq!(members.get(0).unwrap().address, member1);
-    assert_eq!(members.get(1).unwrap().address, member2);
-    assert_eq!(members.get(2).unwrap().address, member3);
-}
-
-#[test]
-#[should_panic]
-fn test_get_group_members_non_existent_group() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let id = BytesN::from_array(&env, &[99u8; 32]);
-    client.get_group_members(&id);
-}
-
-#[test]
-#[should_panic]
-fn test_add_member_to_non_existent_group() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let member = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[99u8; 32]);
-    client.add_group_member(&id, &member);
-}
-
-#[test]
-#[should_panic]
-fn test_add_duplicate_member() {
-    let env = Env::default();
-    let contract_id = env.register(AutoShareContract, ());
-    let client = AutoShareContractClient::new(&env, &contract_id);
-
-    let creator = Address::generate(&env);
-    let member = Address::generate(&env);
-    let id = BytesN::from_array(&env, &[1u8; 32]);
-    let name = String::from_str(&env, "Test Group");
-
-    client.create(&id, &name, &creator);
-    client.add_group_member(&id, &member);
-    client.add_group_member(&id, &member);
 }

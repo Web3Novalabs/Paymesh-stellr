@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { Plus } from "lucide-react";
-import typhoon from "../../../public/coin/Image (5).png";
-import stellar from "../../../public/stellar.jpeg";
+import typhoon from "../../../../public/coin/Image (5).png";
+import stellar from "../../../../public/stellar.jpeg";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -105,7 +105,13 @@ export default function FaqSection() {
       >
         <div className="flex items-center gap-8  transition-all">
           <span className="text-white font-bold text-lg flex items-center gap-2">
-            <Image width={40} height={40} src={stellar} alt="typhoon" className="rounded-full"/>
+            <Image
+              width={40}
+              height={40}
+              src={stellar}
+              alt="typhoon"
+              className="rounded-full"
+            />
             STELLAR
           </span>
           <span className="text-white font-bold text-lg flex items-center gap-2">

@@ -3,7 +3,9 @@ import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { Check, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
+export interface CheckboxProps extends React.ComponentPropsWithoutRef<
+  typeof CheckboxPrimitive.Root
+> {
   label?: string;
   error?: string;
 }
@@ -12,7 +14,8 @@ const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
 >(({ className, label, error, id, ...props }, ref) => {
-  const checkboxId = id || `checkbox-${React.useId()}`;
+  const generatedId = React.useId();
+  const checkboxId = id || `checkbox-${generatedId}`;
 
   return (
     <div className="flex flex-col gap-1">
@@ -27,7 +30,7 @@ const Checkbox = React.forwardRef<
             "data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground",
             "data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:text-primary-foreground",
             error && "border-destructive",
-            className
+            className,
           )}
           {...props}
         >

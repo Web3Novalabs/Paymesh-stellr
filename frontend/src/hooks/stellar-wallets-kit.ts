@@ -44,7 +44,7 @@ export async function getPublicKey() {
   try {
     const { address } = await k.getAddress();
     return address;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
