@@ -15,6 +15,8 @@ pub mod interfaces {
 // 2. Declare the main logic file where the functions are implemented
 mod autoshare_logic;
 
+pub mod mock_token;
+
 #[contract]
 pub struct AutoShareContract;
 
@@ -78,4 +80,15 @@ impl AutoShareContract {
     }
 }
 
+// 3. Link the tests (Requirement: Unit Tests)
+#[cfg(test)]
+#[path = "tests/autoshare_test.rs"]
+mod autoshare_test; // Links the internal tests/autoshare_test.rs inside src
 
+#[cfg(test)]
+#[path = "tests/pause_test.rs"]
+mod pause_test;
+
+#[cfg(test)]
+#[path = "tests/mock_token_test.rs"]
+mod mock_token_test;
