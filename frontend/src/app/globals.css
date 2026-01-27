@@ -10,6 +10,22 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* shadcn/ui color variables */
+  --color-primary: #5B6FE8;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1A1D29;
+  --color-secondary-foreground: #f1f5f9;
+  --color-muted: #334155;
+  --color-muted-foreground: #94a3b8;
+  --color-accent: #1e293b;
+  --color-accent-foreground: #f1f5f9;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #334155;
+  --color-input: #1A1D29;
+  --color-ring: #5B6FE8;
+  --radius: 1rem;
 }
 
 @media (prefers-color-scheme: dark) {
