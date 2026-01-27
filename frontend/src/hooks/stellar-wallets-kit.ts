@@ -8,39 +8,73 @@ import {
 const SELECTED_WALLET_ID = "selectedWalletId";
 
 function getSelectedWalletId() {
+  if (typeof window === "undefined") return null;
   return localStorage.getItem(SELECTED_WALLET_ID);
 }
 
-const kit = new StellarWalletsKit({
-  modules: allowAllModules(),
-  network: WalletNetwork.PUBLIC,
-  // StellarWalletsKit forces you to specify a wallet, even if the user didn't
-  // select one yet, so we default to Freighter.
-  // We'll work around this later in `getPublicKey`.
-  selectedWalletId: getSelectedWalletId() ?? FREIGHTER_ID,
-});
+let kit: StellarWalletsKit | null = null;
 
-export const signTransaction = kit.signTransaction.bind(kit);
+function getKit(): StellarWalletsKit | null {
+  if (kit) return kit;
+
+  if (typeof window !== "undefined") {
+    kit = new StellarWalletsKit({
+      modules: allowAllModules(),
+      network: WalletNetwork.PUBLIC,
+      selectedWalletId: getSelectedWalletId() ?? FREIGHTER_ID,
+    });
+    return kit;
+  }
+
+  return null;
+}
+
+export const signTransaction = async (
+  ...args: Parameters<StellarWalletsKit["signTransaction"]>
+) => {
+  const k = getKit();
+  if (!k) throw new Error("Wallet kit not initialized");
+  return k.signTransaction(...args);
+};
 
 export async function getPublicKey() {
-  if (!getSelectedWalletId()) return null;
-  const { address } = await kit.getAddress();
-  return address;
+  const k = getKit();
+  if (!k || !getSelectedWalletId()) return null;
+
+  try {
+    const { address } = await k.getAddress();
+    return address;
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function setWallet(walletId: string) {
-  localStorage.setItem(SELECTED_WALLET_ID, walletId);
-  kit.setWallet(walletId);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(SELECTED_WALLET_ID, walletId);
+  }
+  const k = getKit();
+  if (k) k.setWallet(walletId);
 }
 
 export async function disconnect(callback?: () => Promise<void>) {
-  localStorage.removeItem(SELECTED_WALLET_ID);
-  kit.disconnect();
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(SELECTED_WALLET_ID);
+  }
+  const k = getKit();
+  if (k) {
+    // kit.disconnect() might not return a promise depending on version,
+    // but usually it's void or Promise<void>. safest to await if possible or just call.
+    await k.disconnect();
+  }
   if (callback) await callback();
 }
 
 export async function connect(callback?: () => Promise<void>) {
-  await kit.openModal({
+  const k = getKit();
+  if (!k) return;
+
+  await k.openModal({
     onWalletSelected: async (option) => {
       try {
         await setWallet(option.id);
