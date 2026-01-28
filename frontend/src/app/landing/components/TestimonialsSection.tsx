@@ -1,6 +1,6 @@
 "use client";
 
-import bricks from "../../../public/bricks.svg";
+import bricks from "../../../../public/bricks.svg";
 import { motion } from "framer-motion";
 
 const testimonials = [

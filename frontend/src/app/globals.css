@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Anton&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -10,11 +11,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  
+
   /* shadcn/ui color variables */
-  --color-primary: #5B6FE8;
+  --color-primary: #5b6fe8;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #1A1D29;
+  --color-secondary: #1a1d29;
   --color-secondary-foreground: #f1f5f9;
   --color-muted: #334155;
   --color-muted-foreground: #94a3b8;
@@ -23,8 +24,8 @@
   --color-destructive: #ef4444;
   --color-destructive-foreground: #ffffff;
   --color-border: #334155;
-  --color-input: #1A1D29;
-  --color-ring: #5B6FE8;
+  --color-input: #1a1d29;
+  --color-ring: #5b6fe8;
   --radius: 1rem;
 }
 
@@ -39,4 +40,43 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom scrollbar for transaction list scrollable area */
+ .transaction-list-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: #5B6FE8 transparent;
+}
+
+.transaction-list-scrollable::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.transaction-list-scrollable::-webkit-scrollbar-track {
+  background: #2A2D3A;
+  border-radius: 10px;
+  margin: 8px 4px;
+}
+
+.transaction-list-scrollable::-webkit-scrollbar-thumb {
+  background: #5B6FE8;
+  border-radius: 10px;
+  border: none;
+}
+
+.transaction-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #4A5FD8;
+}
+
+@media (max-width: 767px) {
+  .transaction-list-scrollable::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+} 
+
+.font-anton {
+  font-family: "Anton", sans-serif;
+  font-weight: 400;
 }

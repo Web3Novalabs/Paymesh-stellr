@@ -15,15 +15,54 @@ pub mod interfaces {
 // 2. Declare the main logic file where the functions are implemented
 mod autoshare_logic;
 
+pub mod mock_token;
+
 #[contract]
 pub struct AutoShareContract;
 
 #[contractimpl]
 impl AutoShareContract {
+    /// Initializes the contract with an admin address.
+    pub fn initialize(env: Env, admin: Address) {
+        autoshare_logic::set_admin(env, admin).unwrap();
+    }
+
+    /// Pauses the contract. Only admin can call.
+    pub fn pause(env: Env, admin: Address) {
+        autoshare_logic::pause(env, admin).unwrap();
+    }
+
+    /// Unpauses the contract. Only admin can call.
+    pub fn unpause(env: Env, admin: Address) {
+        autoshare_logic::unpause(env, admin).unwrap();
+    }
+
+    /// Returns the current pause status.
+    pub fn get_paused_status(env: Env) -> bool {
+        autoshare_logic::get_paused_status(&env)
+    }
+
     /// Creates a new AutoShare plan.
     /// Requirement: create_autoshare should store data and emit an event.
-    pub fn create(env: Env, id: BytesN<32>, name: String, creator: Address) {
-        autoshare_logic::create_autoshare(env, id, name, creator).unwrap();
+    pub fn create(
+        env: Env,
+        id: BytesN<32>,
+        name: String,
+        creator: Address,
+        members: Vec<base::types::GroupMember>,
+    ) {
+        autoshare_logic::create_autoshare(env, id, name, creator, members).unwrap();
+    }
+
+    /// Update members of an existing AutoShare plan.
+    /// Requirement: Only creator can update. Validates percentages.
+    pub fn update_members(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_members: Vec<base::types::GroupMember>,
+    ) {
+        autoshare_logic::update_members(env, id, caller, new_members).unwrap();
     }
 
     /// Retrieves an existing AutoShare plan.
@@ -47,14 +86,28 @@ impl AutoShareContract {
         autoshare_logic::is_group_member(env, id, address).unwrap()
     }
 
-    /// Retrieves all members of a specific group.
     pub fn get_group_members(env: Env, id: BytesN<32>) -> Vec<base::types::GroupMember> {
         autoshare_logic::get_group_members(env, id).unwrap()
     }
 
-    /// Adds a member to a specific group.
-    pub fn add_group_member(env: Env, id: BytesN<32>, address: Address) {
-        autoshare_logic::add_group_member(env, id, address).unwrap();
+    /// Adds a member to a group with specified percentage.
+    pub fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: u32) {
+        autoshare_logic::add_group_member(env, id, address, percentage).unwrap();
+    }
+
+    /// Deactivates a group. Only the creator can deactivate.
+    pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::deactivate_group(env, id, caller).unwrap();
+    }
+
+    /// Activates a group. Only the creator can activate.
+    pub fn activate_group(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::activate_group(env, id, caller).unwrap();
+    }
+
+    /// Returns whether a group is active.
+    pub fn is_group_active(env: Env, id: BytesN<32>) -> bool {
+        autoshare_logic::is_group_active(env, id).unwrap()
     }
 }
 
@@ -63,7 +116,9 @@ impl AutoShareContract {
 #[path = "tests/autoshare_test.rs"]
 mod autoshare_test; // Links the internal tests/autoshare_test.rs inside src
 
-pub mod mock_token;
+#[cfg(test)]
+#[path = "tests/pause_test.rs"]
+mod pause_test;
 
 #[cfg(test)]
 #[path = "tests/mock_token_test.rs"]

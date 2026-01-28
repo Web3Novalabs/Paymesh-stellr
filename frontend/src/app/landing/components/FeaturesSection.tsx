@@ -1,10 +1,10 @@
 "use client";
 
-import usdt from "../../../public/coin/Image.png";
-import usdc from "../../../public/coin/Image (1).png";
-import wbtc from "../../../public/coin/Image (3).png";
-import strk from "../../../public/coin/Image (2).png";
-import eth from "../../../public/coin/Image (4).png";
+import usdt from "../../../../public/coin/Image.png";
+import usdc from "../../../../public/coin/Image (1).png";
+import wbtc from "../../../../public/coin/Image (3).png";
+import strk from "../../../../public/coin/Image (2).png";
+import eth from "../../../../public/coin/Image (4).png";
 import Image from "next/image";
 import { motion } from "framer-motion";
 

@@ -2,11 +2,21 @@ use soroban_sdk::contracterror;
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)] // This is required for Soroban errors
+#[repr(u32)] // This is required for most Soroban errors
 pub enum Error {
     InvalidInput = 1,
     AlreadyExists = 2,
     NotFound = 3,
-    InsufficientBalance = 4,
-    InvalidAmount = 5,
+    ContractPaused = 4,
+    AlreadyPaused = 5,
+    NotPaused = 6,
+    NotAuthorized = 7,
+    InvalidTotalPercentage = 8,
+    EmptyMembers = 9,
+    DuplicateMember = 10,
+    InsufficientBalance = 11,
+    InvalidAmount = 12,
+    GroupInactive = 13,
+    GroupAlreadyActive = 14,
+    GroupAlreadyInactive = 15,
 }

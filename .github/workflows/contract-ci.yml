@@ -54,13 +54,6 @@ jobs:
             ${{ runner.os }}-cargo-
 
       # -----------------------------
-      # Install Soroban CLI
-      # -----------------------------
-      - name: Install Soroban CLI
-        run: |
-          cargo install soroban-cli --locked || echo "Soroban CLI already installed"
-
-      # -----------------------------
       # Formatting check
       # -----------------------------
       - name: Cargo format check

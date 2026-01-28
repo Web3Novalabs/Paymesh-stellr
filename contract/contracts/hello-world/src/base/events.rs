@@ -8,3 +8,28 @@ pub fn emit_autoshare_created(env: &Env, id: BytesN<32>, creator: Address) {
     // Publish the event with the AutoShare ID as the data
     env.events().publish(topics, id);
 }
+
+pub fn emit_contract_paused(env: &Env) {
+    let topics = (symbol_short!("paused"),);
+    env.events().publish(topics, ());
+}
+
+pub fn emit_contract_unpaused(env: &Env) {
+    let topics = (symbol_short!("unpause"),);
+    env.events().publish(topics, ());
+}
+
+pub fn emit_autoshare_updated(env: &Env, id: BytesN<32>, updater: Address) {
+    let topics = (symbol_short!("updated"), updater);
+    env.events().publish(topics, id);
+}
+
+pub fn emit_group_deactivated(env: &Env, id: BytesN<32>, creator: Address) {
+    let topics = (symbol_short!("deactive"), creator);
+    env.events().publish(topics, id);
+}
+
+pub fn emit_group_activated(env: &Env, id: BytesN<32>, creator: Address) {
+    let topics = (symbol_short!("activate"), creator);
+    env.events().publish(topics, id);
+}

@@ -35,7 +35,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
 
       # -----------------------------------
       # Detect and set up package manager
@@ -90,6 +90,7 @@ jobs:
       # Format check (ESLint)
       # -----------------------------------
       - name: Format check
+        id: lint
         run: |
           if [ "${{ steps.pm.outputs.manager }}" = "pnpm" ]; then
             pnpm lint
@@ -104,6 +105,7 @@ jobs:
       # Build check
       # -----------------------------------
       - name: Build frontend
+        id: build
         run: |
           if [ "${{ steps.pm.outputs.manager }}" = "pnpm" ]; then
             pnpm build
@@ -117,7 +119,7 @@ jobs:
       # Report build status
       # -----------------------------------
       - name: Report status
-        if: failure()
+        if: steps.lint.outcome == 'failure' || steps.build.outcome == 'failure'
         run: |
           echo "❌ CI checks failed!"
           echo "Please ensure:"

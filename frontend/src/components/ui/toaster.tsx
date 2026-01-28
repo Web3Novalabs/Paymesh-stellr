@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import {
   Toast,
   ToastClose,
@@ -16,14 +14,23 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
+      {toasts.map(function ({
+        id,
+        title,
+        description,
+        action,
+        variant,
+        ...props
+      }) {
         return (
           <Toast key={id} variant={variant} {...props}>
             <div className="flex gap-3">
               {getToastIcon(variant ?? undefined)}
               <div className="grid gap-1">
                 {title && <ToastTitle>{title}</ToastTitle>}
-                {description && <ToastDescription>{description}</ToastDescription>}
+                {description && (
+                  <ToastDescription>{description}</ToastDescription>
+                )}
               </div>
             </div>
             {action}
