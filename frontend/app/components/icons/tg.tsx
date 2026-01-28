@@ -1,3 +1,3 @@
 export default function Tg() {
-  return <div></div>;
+  return <div> </div>;
 }
