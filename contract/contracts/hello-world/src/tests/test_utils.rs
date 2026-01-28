@@ -85,13 +85,26 @@ pub fn setup_supported_tokens(_env: &Env, _contract: &Address, _tokens: &Vec<Add
 
 pub fn create_test_members(env: &Env, count: u32) -> Vec<crate::base::types::GroupMember> {
     let mut members = Vec::new(env);
-    for _ in 0..count {
+    if count == 0 {
+        return members;
+    }
+    
+    let percentage_per_member = 100 / count;
+    let mut total_percentage = 0;
+    
+    for i in 0..count {
+        let percentage = if i == count - 1 {
+            100 - total_percentage
+        } else {
+            percentage_per_member
+        };
+        total_percentage += percentage;
+        
         members.push_back(crate::base::types::GroupMember {
             address: Address::generate(env),
+            percentage,
         });
     }
-    // "Distribute percentages" is mentioned in requirement, but GroupMember struct only has address.
-    // So we ignore percentages for now.
     members
 }
 
@@ -99,41 +112,18 @@ pub fn create_test_group(
     env: &Env,
     contract: &Address,
     creator: &Address,
-    _members: &Vec<crate::base::types::GroupMember>,
+    members: &Vec<crate::base::types::GroupMember>,
     usages: u32,
     _token: &Address,
 ) -> BytesN<32> {
     let client = AutoShareContractClient::new(env, contract);
-    let _id = BytesN::from_array(env, &[10u8; 32]); // Generate a deterministic or random ID? Contract requires unique.
-    // For test utils, maybe we want random to avoid collision if called multiple times.
-    // But `BytesN::from_array` needs a fixed array.
-    // Let's use a counter or random bytes. 
-    // Since we don't have easy random bytes gen in util without passing seed, let's just make a new one.
-    // Actually `BytesN<32>` doesn't have a `random` method exposed easily here without `env`. 
-    // We can use `BytesN::from_array(env, &[rand...])` if we had rand.
-    // Let's just use `BytesN::from_array(env, &[0; 32])` implies same ID. Use different ID.
-    // For now, simpler: pass ID as arg? No, req says return ID.
-    // We'll generate a pseudo-random ID based on ledger sequence or something if possible, or just all 1s.
+    
     let mut id_bytes = [0u8; 32];
     id_bytes[0..4].copy_from_slice(&usages.to_be_bytes());
     let id = BytesN::from_array(env, &id_bytes); 
     let name = String::from_str(env, "Test Group");
     
-    client.create(&id, &name, creator);
-    
-    // Logic to add members if contract supported adding them at creation? 
-    // Contract only has `add_group_member`.
-    // So strictly we should iterate and add members.
-    // But `create_test_group` params includes members.
-    
-    /* 
-    for member in members.iter() {
-        client.add_group_member(&id, &member.address);
-    }
-    */
-    // We can't iterate easily over Soroban Vec in this context without `iter()` which might be available.
-    // Let's leave member addition for specific tests if not strictly required to be automatic here.
-    // Or try to implement it.
+    client.create(&id, &name, creator, members);
     
     id
 }

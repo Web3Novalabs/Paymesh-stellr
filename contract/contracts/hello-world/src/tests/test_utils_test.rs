@@ -40,7 +40,11 @@ fn test_autoshare_helpers() {
     
     let contract = deploy_autoshare_contract(&env, &Address::generate(&env));
     let creator = Address::generate(&env);
-    let members = Vec::new(&env); // Empty members
+    let mut members = Vec::new(&env);
+    members.push_back(crate::base::types::GroupMember {
+        address: Address::generate(&env),
+        percentage: 100,
+    });
     
     let group_id = create_test_group(
         &env, 
