@@ -31,7 +31,7 @@ export default function Nav() {
             </span>
           </div>
 
-          {/* Desktop Navigation - Only on large screens */}
+          {/* Desktop Navigation - On large screens only */}
           <div className="hidden lg:flex items-center gap-8">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
