@@ -52,7 +52,7 @@
                 "val": {
                   "vec": [
                     {
-                      "bytes": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+                      "bytes": "0101010101010101010101010101010101010101010101010101010101010101"
                     }
                   ]
                 }
@@ -73,7 +73,7 @@
                   "symbol": "AutoShare"
                 },
                 {
-                  "bytes": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+                  "bytes": "0101010101010101010101010101010101010101010101010101010101010101"
                 }
               ]
             },
@@ -93,7 +93,7 @@
                       "symbol": "AutoShare"
                     },
                     {
-                      "bytes": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+                      "bytes": "0101010101010101010101010101010101010101010101010101010101010101"
                     }
                   ]
                 },
@@ -113,7 +113,64 @@
                         "symbol": "id"
                       },
                       "val": {
-                        "bytes": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+                        "bytes": "0101010101010101010101010101010101010101010101010101010101010101"
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "is_active"
+                      },
+                      "val": {
+                        "bool": true
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "members"
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "address"
+                                },
+                                "val": {
+                                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "percentage"
+                                },
+                                "val": {
+                                  "u32": 50
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "map": [
+                              {
+                                "key": {
+                                  "symbol": "address"
+                                },
+                                "val": {
+                                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                                }
+                              },
+                              {
+                                "key": {
+                                  "symbol": "percentage"
+                                },
+                                "val": {
+                                  "u32": 50
+                                }
+                              }
+                            ]
+                          }
+                        ]
                       }
                     },
                     {
@@ -121,94 +178,8 @@
                         "symbol": "name"
                       },
                       "val": {
-                        "string": "Group With Members"
+                        "string": "Update Test"
                       }
-                    }
-                  ]
-                }
-              }
-            },
-            "ext": "v0"
-          },
-          4095
-        ]
-      ],
-      [
-        {
-          "contract_data": {
-            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-            "key": {
-              "vec": [
-                {
-                  "symbol": "GroupMembers"
-                },
-                {
-                  "bytes": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
-                }
-              ]
-            },
-            "durability": "persistent"
-          }
-        },
-        [
-          {
-            "last_modified_ledger_seq": 0,
-            "data": {
-              "contract_data": {
-                "ext": "v0",
-                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
-                "key": {
-                  "vec": [
-                    {
-                      "symbol": "GroupMembers"
-                    },
-                    {
-                      "bytes": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
-                    }
-                  ]
-                },
-                "durability": "persistent",
-                "val": {
-                  "vec": [
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "address"
-                          },
-                          "val": {
-                            "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "percentage"
-                          },
-                          "val": {
-                            "u32": 60
-                          }
-                        }
-                      ]
-                    },
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "address"
-                          },
-                          "val": {
-                            "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "percentage"
-                          },
-                          "val": {
-                            "u32": 40
-                          }
-                        }
-                      ]
                     }
                   ]
                 }
