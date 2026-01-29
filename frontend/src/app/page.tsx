@@ -18,14 +18,16 @@ export default function Page() {
   return (
     <main className="min-h-screen w-full text-white overflow-x-hidden">
       <Navbar />
-      <HeroSection />
-      <div className="py-25">
-        <IntroSection />
-        <FeaturesSection />
-      </div>
-      <TestimonialsSection />
-      <StatsSection />
-      <FaqSection />
+      <main>
+        <HeroSection />
+        <div className="py-25">
+          <IntroSection />
+          <FeaturesSection />
+        </div>
+        <TestimonialsSection />
+        <StatsSection />
+        <FaqSection />
+      </main>
       <Footer />
 
       {/* Test Button for Share Popup - Preview Feature */}
