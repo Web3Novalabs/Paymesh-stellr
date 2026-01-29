@@ -320,10 +320,7 @@ pub fn add_group_member(
         }
     }
 
-    members.push_back(GroupMember {
-        address,
-        percentage,
-    });
+    members.push_back(GroupMember { address, percentage });
     env.storage().persistent().set(&members_key, &members);
     Ok(())
 }
