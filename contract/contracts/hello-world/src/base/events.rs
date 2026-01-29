@@ -1,5 +1,4 @@
-use crate::base::types::GroupMember;
-use soroban_sdk::{symbol_short, Address, BytesN, Env, Vec};
+use soroban_sdk::{symbol_short, Address, BytesN, Env};
 
 // This function publishes an event to the Stellar network
 pub fn emit_autoshare_created(env: &Env, id: BytesN<32>, creator: Address) {
