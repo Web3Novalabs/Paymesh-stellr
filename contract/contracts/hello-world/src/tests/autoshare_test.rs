@@ -133,7 +133,7 @@ fn test_get_groups_by_creator_multiple() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
     let id1 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator1, &members, 1, &token);
-    let id2 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator2, &members, 2, &token);
+    let _id2 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator2, &members, 2, &token);
     let id3 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator1, &members, 3, &token);
 
     let groups = client.get_groups_by_creator(&creator1);
@@ -397,7 +397,7 @@ fn test_get_group_members_multiple() {
     
     // Note: get_group_members in current impl might have issues as noted in autoshare_logic.rs (DataKey::GroupMembers vs AutoShareDetails)
     // But we test the expected behavior.
-    let members_res = client.get_group_members(&id);
+    let _members_res = client.get_group_members(&id);
     // If it's broken, this will fail.
     // assert_eq!(members_res.len(), 3);
 }

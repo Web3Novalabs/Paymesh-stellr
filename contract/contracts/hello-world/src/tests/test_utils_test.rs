@@ -8,7 +8,7 @@ use soroban_sdk::{testutils::Address as _, Address, Env, String, Vec};
 fn test_setup_test_env() {
     let test_env = setup_test_env();
     assert_eq!(test_env.users.len(), 3);
-    assert!(test_env.mock_tokens.len() > 0);
+    assert!(!test_env.mock_tokens.is_empty());
     // Ensure admin is not one of the users (impl detail check)
     assert!(test_env.admin != test_env.users.get(0).unwrap());
 }
