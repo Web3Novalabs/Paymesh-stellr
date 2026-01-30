@@ -1,5 +1,5 @@
 use crate::mock_token::MockTokenClient;
-use crate::test_utils::{deploy_mock_token, assert_balance, setup_test_env};
+use crate::test_utils::{assert_balance, deploy_mock_token, setup_test_env};
 use soroban_sdk::{testutils::Address as _, Address, String};
 
 #[test]

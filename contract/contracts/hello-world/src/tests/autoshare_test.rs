@@ -1,12 +1,9 @@
-use crate::mock_token::{MockToken, MockTokenClient};
-use crate::{AutoShareContract, AutoShareContractClient};
 use crate::base::types::GroupMember;
-use crate::test_utils::{
-    setup_test_env, create_test_group
-};
+use crate::mock_token::{MockToken, MockTokenClient};
+use crate::test_utils::{create_test_group, setup_test_env};
+use crate::{AutoShareContract, AutoShareContractClient};
 
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
-
 
 #[test]
 fn test_create_and_get_success() {
@@ -29,7 +26,14 @@ fn test_create_and_get_success() {
     let name = String::from_str(&test_env.env, "Test Group");
 
     // Usages=1 -> ID derived from 1
-    let id = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 1, &token);
+    let id = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
 
     let result = client.get(&id);
     assert_eq!(result.name, name);
@@ -50,7 +54,7 @@ fn test_create_and_get_success() {
 #[should_panic]
 fn test_duplicate_id_fails() {
     let test_env = setup_test_env();
-    
+
     let creator = test_env.users.get(0).unwrap().clone();
     let mut members = Vec::new(&test_env.env);
     members.push_back(GroupMember {
@@ -60,8 +64,22 @@ fn test_duplicate_id_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
     // Create group with usages=1 twice
-    create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 1, &token);
-    create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 1, &token);
+    create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+    create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
 }
 
 #[test]
@@ -97,9 +115,30 @@ fn test_get_all_groups_multiple() {
     });
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id1 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator1, &members, 1, &token);
-    let id2 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator2, &members, 2, &token);
-    let id3 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator1, &members, 3, &token);
+    let id1 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator1,
+        &members,
+        1,
+        &token,
+    );
+    let id2 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator2,
+        &members,
+        2,
+        &token,
+    );
+    let id3 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator1,
+        &members,
+        3,
+        &token,
+    );
 
     let groups = client.get_all_groups();
     assert_eq!(groups.len(), 3);
@@ -132,9 +171,30 @@ fn test_get_groups_by_creator_multiple() {
     });
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id1 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator1, &members, 1, &token);
-    let _id2 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator2, &members, 2, &token);
-    let id3 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator1, &members, 3, &token);
+    let id1 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator1,
+        &members,
+        1,
+        &token,
+    );
+    let _id2 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator2,
+        &members,
+        2,
+        &token,
+    );
+    let id3 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator1,
+        &members,
+        3,
+        &token,
+    );
 
     let groups = client.get_groups_by_creator(&creator1);
     assert_eq!(groups.len(), 2);
@@ -329,7 +389,14 @@ fn test_is_group_member_false() {
     });
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 1, &token);
+    let id = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
 
     let is_member = client.is_group_member(&id, &member);
     assert!(!is_member);
@@ -349,7 +416,14 @@ fn test_is_group_member_true() {
     });
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 1, &token);
+    let id = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
 
     let is_member = client.is_group_member(&id, &member);
     assert!(is_member);
@@ -375,8 +449,8 @@ fn test_get_group_members_multiple() {
     let creator = test_env.users.get(0).unwrap().clone();
     let member1 = test_env.users.get(1).unwrap().clone();
     let member2 = test_env.users.get(2).unwrap().clone();
-    let member3 = Address::generate(&test_env.env); 
-    
+    let member3 = Address::generate(&test_env.env);
+
     let mut members = Vec::new(&test_env.env);
     members.push_back(GroupMember {
         address: member1.clone(),
@@ -390,11 +464,18 @@ fn test_get_group_members_multiple() {
         address: member3.clone(),
         percentage: 30,
     });
-    
+
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 1, &token);
-    
+    let id = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+
     // Note: get_group_members in current impl might have issues as noted in autoshare_logic.rs (DataKey::GroupMembers vs AutoShareDetails)
     // But we test the expected behavior.
     let _members_res = client.get_group_members(&id);
