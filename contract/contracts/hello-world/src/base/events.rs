@@ -33,3 +33,13 @@ pub fn emit_group_activated(env: &Env, id: BytesN<32>, creator: Address) {
     let topics = (symbol_short!("activate"), creator);
     env.events().publish(topics, id);
 }
+
+pub fn emit_admin_transferred(env: &Env, old_admin: Address, new_admin: Address) {
+    let topics = (symbol_short!("admintfr"), old_admin);
+    env.events().publish(topics, new_admin);
+}
+
+pub fn emit_withdrawal(env: &Env, token: Address, amount: i128, recipient: Address) {
+    let topics = (symbol_short!("withdraw"), token, recipient);
+    env.events().publish(topics, amount);
+}

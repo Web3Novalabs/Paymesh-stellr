@@ -41,41 +41,6 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-
-/* Custom scrollbar for transaction list scrollable area */
- .transaction-list-scrollable {
-  scrollbar-width: thin;
-  scrollbar-color: #5B6FE8 transparent;
-}
-
-.transaction-list-scrollable::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.transaction-list-scrollable::-webkit-scrollbar-track {
-  background: #2A2D3A;
-  border-radius: 10px;
-  margin: 8px 4px;
-}
-
-.transaction-list-scrollable::-webkit-scrollbar-thumb {
-  background: #5B6FE8;
-  border-radius: 10px;
-  border: none;
-}
-
-.transaction-list-scrollable::-webkit-scrollbar-thumb:hover {
-  background: #4A5FD8;
-}
-
-@media (max-width: 767px) {
-  .transaction-list-scrollable::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-} 
-
 .font-anton {
   font-family: "Anton", sans-serif;
   font-weight: 400;

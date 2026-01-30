@@ -49,7 +49,7 @@ export default function ConnectWalletButton() {
         <>
           <button
             onClick={() => connect(showConnected)}
-            className="bg-[#4950B1] text-sm text-[#DFDADA] px-6 py-4 rounded-full transition font-black border border-[#FFFFFF1A]"
+            className="bg-[#5B63D6] hover:bg-[#4A51C9] text-white px-3 lg:px-6 py-[11px] lg:py-[15px] rounded-full text-xs lg:text-sm/[100%] font-black tracking-[0] uppercase transition-colors shadow-lg shadow-indigo-500/20"
           >
             CONNECT WALLET
           </button>

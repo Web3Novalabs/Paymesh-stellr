@@ -1,9 +1,12 @@
-use crate::AutoShareContractClient;
+use crate::mock_token::{MockToken, MockTokenClient};
+use crate::{AutoShareContract, AutoShareContractClient};
 use crate::base::types::GroupMember;
 use crate::test_utils::{
     setup_test_env, create_test_group
 };
-use soroban_sdk::{testutils::Address as _, Address, BytesN, String, Vec, Env};
+
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
+
 
 #[test]
 fn test_create_and_get_success() {
@@ -729,4 +732,356 @@ fn test_is_group_member_works_on_inactive_group() {
 
     // Should still be able to check membership
     assert!(client.is_group_member(&id, &member1));
+}
+
+// =====================
+// Admin Management Tests
+// =====================
+
+#[test]
+fn test_initialize_with_admin() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let retrieved_admin = client.get_admin();
+    assert_eq!(retrieved_admin, admin);
+}
+
+#[test]
+fn test_get_admin() {
+    let env = Env::default();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    let result = client.get_admin();
+    assert_eq!(result, admin);
+}
+
+#[test]
+fn test_transfer_admin() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let old_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+
+    client.initialize(&old_admin);
+    client.transfer_admin(&old_admin, &new_admin);
+
+    let current_admin = client.get_admin();
+    assert_eq!(current_admin, new_admin);
+}
+
+#[test]
+#[should_panic]
+fn test_transfer_admin_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let non_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.transfer_admin(&non_admin, &new_admin);
+}
+
+#[test]
+fn test_admin_can_pause() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    client.pause(&admin);
+    assert!(client.get_paused_status());
+}
+
+#[test]
+fn test_admin_can_unpause() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    client.pause(&admin);
+    assert!(client.get_paused_status());
+
+    client.unpause(&admin);
+    assert!(!client.get_paused_status());
+}
+
+// =====================
+// Withdrawal Tests
+// =====================
+
+#[test]
+fn test_get_contract_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    client.initialize(&admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Check contract balance
+    let balance = client.get_contract_balance(&token_id);
+    assert_eq!(balance, 1000);
+}
+
+#[test]
+fn test_admin_can_withdraw() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    client.initialize(&admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Withdraw tokens
+    client.withdraw(&admin, &token_id, &500, &recipient);
+
+    // Check balances
+    let contract_balance = client.get_contract_balance(&token_id);
+    let recipient_balance = token_client.balance(&recipient);
+
+    assert_eq!(contract_balance, 500);
+    assert_eq!(recipient_balance, 500);
+}
+
+#[test]
+#[should_panic]
+fn test_non_admin_cannot_withdraw() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let non_admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    client.initialize(&admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Try to withdraw as non-admin (should panic)
+    client.withdraw(&non_admin, &token_id, &500, &recipient);
+}
+
+#[test]
+#[should_panic]
+fn test_withdraw_insufficient_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    client.initialize(&admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Try to withdraw more than available (should panic)
+    client.withdraw(&admin, &token_id, &1500, &recipient);
+}
+
+#[test]
+#[should_panic]
+fn test_withdraw_zero_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    client.initialize(&admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Try to withdraw zero amount (should panic)
+    client.withdraw(&admin, &token_id, &0, &recipient);
+}
+
+#[test]
+#[should_panic]
+fn test_withdraw_negative_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    client.initialize(&admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Try to withdraw negative amount (should panic)
+    client.withdraw(&admin, &token_id, &-100, &recipient);
+}
+
+#[test]
+fn test_admin_functions_after_transfer() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let old_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.initialize(&old_admin);
+    client.transfer_admin(&old_admin, &new_admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &new_admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // New admin should be able to withdraw
+    client.withdraw(&new_admin, &token_id, &500, &recipient);
+
+    let recipient_balance = token_client.balance(&recipient);
+    assert_eq!(recipient_balance, 500);
+}
+
+#[test]
+#[should_panic]
+fn test_old_admin_cannot_withdraw_after_transfer() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(AutoShareContract, ());
+    let client = AutoShareContractClient::new(&env, &contract_id);
+
+    let old_admin = Address::generate(&env);
+    let new_admin = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    client.initialize(&old_admin);
+    client.transfer_admin(&old_admin, &new_admin);
+
+    // Create and initialize token
+    let token_id = env.register(MockToken, ());
+    let token_client = MockTokenClient::new(&env, &token_id);
+    token_client.initialize(
+        &old_admin,
+        &7,
+        &String::from_str(&env, "Test Token"),
+        &String::from_str(&env, "TST"),
+    );
+
+    // Mint some tokens to the contract
+    token_client.mint(&contract_id, &1000);
+
+    // Old admin should NOT be able to withdraw (should panic)
+    client.withdraw(&old_admin, &token_id, &500, &recipient);
 }

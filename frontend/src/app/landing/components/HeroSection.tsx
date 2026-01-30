@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 export default function HeroSection() {
   return (
     <motion.section
-      className="relative w-full flex flex-col items-center justify-center text-center my-20"
+      className="relative w-full flex flex-col items-center justify-center text-center pt-[170px] pb-20"
       initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}

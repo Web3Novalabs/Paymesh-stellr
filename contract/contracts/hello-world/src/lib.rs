@@ -15,6 +15,7 @@ pub mod interfaces {
 // 2. Declare the main logic file where the functions are implemented
 mod autoshare_logic;
 
+#[cfg(test)]
 pub mod mock_token;
 
 #[contract]
@@ -108,6 +109,26 @@ impl AutoShareContract {
     /// Returns whether a group is active.
     pub fn is_group_active(env: Env, id: BytesN<32>) -> bool {
         autoshare_logic::is_group_active(env, id).unwrap()
+    }
+
+    /// Returns the current admin address.
+    pub fn get_admin(env: Env) -> Address {
+        autoshare_logic::get_admin(env).unwrap()
+    }
+
+    /// Transfers admin rights to a new address. Only current admin can call.
+    pub fn transfer_admin(env: Env, current_admin: Address, new_admin: Address) {
+        autoshare_logic::transfer_admin(env, current_admin, new_admin).unwrap();
+    }
+
+    /// Withdraws tokens from the contract. Only admin can call.
+    pub fn withdraw(env: Env, admin: Address, token: Address, amount: i128, recipient: Address) {
+        autoshare_logic::withdraw(env, admin, token, amount, recipient).unwrap();
+    }
+
+    /// Returns the contract's balance for a specified token.
+    pub fn get_contract_balance(env: Env, token: Address) -> i128 {
+        autoshare_logic::get_contract_balance(env, token)
     }
 }
 

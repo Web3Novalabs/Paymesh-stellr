@@ -1,10 +1,10 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_autoshare_created, emit_autoshare_updated, emit_contract_paused, emit_contract_unpaused,
-    emit_group_activated, emit_group_deactivated,
+    emit_admin_transferred, emit_autoshare_created, emit_autoshare_updated, emit_contract_paused,
+    emit_contract_unpaused, emit_group_activated, emit_group_deactivated, emit_withdrawal,
 };
 use crate::base::types::{AutoShareDetails, GroupMember};
-use soroban_sdk::{contracttype, Address, BytesN, Env, String, Vec};
+use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
 #[contracttype]
 pub enum DataKey {
@@ -90,6 +90,35 @@ fn require_not_paused(env: &Env) -> Result<(), Error> {
     if get_paused_status(env) {
         return Err(Error::ContractPaused);
     }
+    Ok(())
+}
+
+fn require_admin(env: &Env, caller: &Address) -> Result<(), Error> {
+    let stored_admin: Address = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .ok_or(Error::NotAuthorized)?;
+
+    if caller != &stored_admin {
+        return Err(Error::NotAuthorized);
+    }
+    Ok(())
+}
+
+pub fn get_admin(env: Env) -> Result<Address, Error> {
+    env.storage()
+        .persistent()
+        .get(&DataKey::Admin)
+        .ok_or(Error::NotFound)
+}
+
+pub fn transfer_admin(env: Env, current_admin: Address, new_admin: Address) -> Result<(), Error> {
+    current_admin.require_auth();
+    require_admin(&env, &current_admin)?;
+
+    env.storage().persistent().set(&DataKey::Admin, &new_admin);
+    emit_admin_transferred(&env, current_admin, new_admin);
     Ok(())
 }
 
@@ -369,4 +398,35 @@ pub fn is_group_active(env: Env, id: BytesN<32>) -> Result<bool, Error> {
         .ok_or(Error::NotFound)?;
 
     Ok(details.is_active)
+}
+
+pub fn get_contract_balance(env: Env, token: Address) -> i128 {
+    let client = token::TokenClient::new(&env, &token);
+    client.balance(&env.current_contract_address())
+}
+
+pub fn withdraw(
+    env: Env,
+    admin: Address,
+    token: Address,
+    amount: i128,
+    recipient: Address,
+) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    if amount <= 0 {
+        return Err(Error::InvalidAmount);
+    }
+
+    let contract_balance = get_contract_balance(env.clone(), token.clone());
+    if contract_balance < amount {
+        return Err(Error::InsufficientContractBalance);
+    }
+
+    let client = token::TokenClient::new(&env, &token);
+    client.transfer(&env.current_contract_address(), &recipient, &amount);
+
+    emit_withdrawal(&env, token, amount, recipient);
+    Ok(())
 }
