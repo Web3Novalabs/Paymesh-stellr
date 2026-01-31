@@ -9,7 +9,6 @@ use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 #[contracttype]
 pub enum DataKey {
     AutoShare(BytesN<32>),
-    GroupMembers(BytesN<32>),
     AllGroups,
     Admin,
     IsPaused,
@@ -276,20 +275,8 @@ pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> Result<boo
 }
 
 pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, Error> {
-    // First check if the group exists
-    let group_key = DataKey::AutoShare(id.clone());
-    if !env.storage().persistent().has(&group_key) {
-        return Err(Error::NotFound);
-    }
-
-    let members_key = DataKey::GroupMembers(id);
-    let members: Vec<GroupMember> = env
-        .storage()
-        .persistent()
-        .get(&members_key)
-        .unwrap_or(Vec::new(&env));
-
-    Ok(members)
+    let details = get_autoshare(env, id)?;
+    Ok(details.members)
 }
 
 pub fn add_group_member(
@@ -300,31 +287,31 @@ pub fn add_group_member(
 ) -> Result<(), Error> {
     require_not_paused(&env)?;
 
-    // First check if the group exists
-    let group_key = DataKey::AutoShare(id.clone());
-    if !env.storage().persistent().has(&group_key) {
-        return Err(Error::NotFound);
-    }
-
-    let members_key = DataKey::GroupMembers(id);
-    let mut members: Vec<GroupMember> = env
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
         .storage()
         .persistent()
-        .get(&members_key)
-        .unwrap_or(Vec::new(&env));
+        .get(&key)
+        .ok_or(Error::NotFound)?;
 
     // Check if already a member
-    for member in members.iter() {
+    for member in details.members.iter() {
         if member.address == address {
             return Err(Error::AlreadyExists);
         }
     }
 
-    members.push_back(GroupMember {
+    // Add new member
+    details.members.push_back(GroupMember {
         address,
         percentage,
     });
-    env.storage().persistent().set(&members_key, &members);
+
+    // Validate total percentage after adding
+    validate_members(&details.members)?;
+
+    // Save updated details
+    env.storage().persistent().set(&key, &details);
     Ok(())
 }
 
