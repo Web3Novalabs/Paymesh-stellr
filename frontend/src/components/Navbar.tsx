@@ -5,7 +5,7 @@ import { Menu, X } from "lucide-react";
 import ConnectWalletButton from "./ConnectWalletButton";
 
 const NAV_ITEMS = [
-  { name: "Overview", href: "#" },
+  { name: "Overview", href: "/user/overview" },
   { name: "Groups", href: "#" },
   { name: "Fundraiser", href: "#" },
   { name: "Transactions", href: "#" },
