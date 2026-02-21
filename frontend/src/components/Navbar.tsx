@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import ConnectWalletButton from "./ConnectWalletButton";
+import Image from "next/image";
 
 const NAV_ITEMS = [
   { name: "Overview", href: "/user/overview" },
@@ -20,10 +21,11 @@ export function Navbar() {
       {/* Logo */}
       <div className="flex items-center gap-[7px] py-1 pr-3 px-2 rounded-full border-[#232542] border-[1px]">
         <div className="relative w-9 h-9 lg:w-12 lg:h-12 overflow-hidden rounded-full border border-white/10">
-          <img
+          <Image
             src="/logo.jpeg"
             alt="Paymesh Logo"
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
           />
         </div>
         <span className="text-2xl/[100%] lg:text-[28px]/12 font-bold text-white tracking-wide font-anton">

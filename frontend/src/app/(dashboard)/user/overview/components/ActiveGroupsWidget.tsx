@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Users, TrendingUp, ChevronRight, Wallet } from "lucide-react";
+import Image from "next/image";
 
 export type ActiveGroup = {
   id: string;
@@ -197,9 +198,11 @@ function GroupRow({ group, index, maxFunds }: { group: ActiveGroup; index: numbe
                 key={i}
                 className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-[#0A0B0F] overflow-hidden bg-[#1a1d29]"
               >
-                <img
+                <Image
                   src={token.icon}
                   alt={token.name}
+                  width={20}
+                  height={20}
                   className="w-full h-full object-cover"
                 />
               </div>
