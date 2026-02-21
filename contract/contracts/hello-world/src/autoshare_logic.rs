@@ -378,6 +378,9 @@ pub fn is_token_supported(env: Env, token: Address) -> bool {
 pub fn set_usage_fee(env: Env, fee: u32, admin: Address) -> Result<(), Error> {
     admin.require_auth();
     require_admin(&env, &admin)?;
+    if fee == 0 {
+        return Err(Error::InvalidAmount);
+    }
 
     let fee_key = DataKey::UsageFee;
     env.storage().persistent().set(&fee_key, &fee);
