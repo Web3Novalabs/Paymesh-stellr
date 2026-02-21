@@ -51,12 +51,7 @@ pub trait AutoShareTrait {
 
     /// Update members of an existing AutoShare plan.
     /// Only creator can update. Validates percentages.
-    fn update_members(
-        env: Env,
-        id: BytesN<32>,
-        caller: Address,
-        new_members: Vec<GroupMember>,
-    );
+    fn update_members(env: Env, id: BytesN<32>, caller: Address, new_members: Vec<GroupMember>);
 
     /// Retrieves an existing AutoShare plan.
     fn get(env: Env, id: BytesN<32>) -> AutoShareDetails;
