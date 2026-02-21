@@ -1612,4 +1612,3 @@ fn test_create_group_with_payment() {
     assert_eq!(details.usage_count, usage_count);
     assert_eq!(details.total_usages_paid, usage_count);
 }
-
