@@ -556,6 +556,10 @@ pub fn update_members(
 ) -> Result<(), Error> {
     caller.require_auth();
 
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
     let key = DataKey::AutoShare(id.clone());
     let mut details: AutoShareDetails = env
         .storage()
@@ -609,6 +613,10 @@ pub fn update_members(
 pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
     caller.require_auth();
 
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
     let key = DataKey::AutoShare(id.clone());
     let mut details: AutoShareDetails = env
         .storage()
@@ -633,6 +641,10 @@ pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(),
 
 pub fn activate_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
     caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
 
     let key = DataKey::AutoShare(id.clone());
     let mut details: AutoShareDetails = env
