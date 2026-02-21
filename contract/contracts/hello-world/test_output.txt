@@ -1,0 +1,88 @@
+    Blocking waiting for file lock on build directory
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 18s
+     Running unittests src\lib.rs (C:\Users\USER\Desktop\wek wek wek wek\whizness\drips\Paymesh-stellr\contract\target\debug\deps\hello_world-a6f6d5f44f0e17d7.exe)
+
+running 80 tests
+test autoshare_test::test_add_duplicate_token_fails - should panic ... ok
+test autoshare_test::test_add_member_to_non_existent_group - should panic ... ok
+test autoshare_test::test_add_and_get_supported_tokens ... ok
+test autoshare_test::test_activating_already_active_group_fails - should panic ... ok
+test autoshare_test::test_add_member_invalid_total_percentage - should panic ... ok
+test autoshare_test::test_admin_can_pause ... ok
+test autoshare_test::test_admin_can_unpause ... ok
+test autoshare_test::test_add_group_member_success ... ok
+test autoshare_test::test_admin_initialization ... ok
+test autoshare_test::test_add_duplicate_member - should panic ... ok
+test autoshare_test::test_add_multiple_members_sequentially ... ok
+test autoshare_test::test_add_member_to_inactive_group ... ok
+test autoshare_test::test_admin_can_withdraw ... ok
+test autoshare_test::test_admin_functions_after_transfer ... ok
+test autoshare_test::test_create_and_get_success ... ok
+test autoshare_test::test_create_fails_invalid_percentage - should panic ... ok
+test autoshare_test::test_create_fails_duplicate_member - should panic ... ok
+test autoshare_test::test_create_fails_empty_members - should panic ... ok
+test autoshare_test::test_deactivating_already_inactive_group_fails - should panic ... ok
+test autoshare_test::test_get_admin ... ok
+test autoshare_test::test_create_group_with_payment ... ok
+test autoshare_test::test_duplicate_id_fails - should panic ... ok
+test autoshare_test::test_creator_can_activate_group ... ok
+test autoshare_test::test_get_all_groups_empty ... ok
+test autoshare_test::test_get_all_groups_includes_inactive ... ok
+test autoshare_test::test_creator_can_deactivate_group ... ok
+test autoshare_test::test_get_all_groups_multiple ... ok
+test autoshare_test::test_get_contract_balance ... ok
+test autoshare_test::test_get_group_members_non_existent_group - should panic ... ok
+test autoshare_test::test_get_group_members_empty ... ok
+test autoshare_test::test_get_non_existent_fails - should panic ... ok
+test autoshare_test::test_get_group_members_multiple ... ok
+test autoshare_test::test_initialize_with_admin ... ok
+test autoshare_test::test_get_groups_by_creator_empty ... ok
+test autoshare_test::test_group_created_as_active ... ok
+test autoshare_test::test_is_group_member ... ok
+test autoshare_test::test_is_group_member_non_existent_group - should panic ... ok
+test autoshare_test::test_is_group_active_on_nonexistent_group_fails - should panic ... ok
+test autoshare_test::test_is_group_member_false ... ok
+test autoshare_test::test_is_group_member_works_on_inactive_group ... ok
+test autoshare_test::test_non_admin_cannot_set_usage_fee - should panic ... ok
+test autoshare_test::test_non_admin_cannot_withdraw - should panic ... ok
+test autoshare_test::test_is_group_member_true ... ok
+test autoshare_test::test_old_admin_cannot_withdraw_after_transfer - should panic ... ok
+test autoshare_test::test_get_groups_by_creator_multiple ... ok
+test autoshare_test::test_set_and_get_usage_fee ... ok
+test autoshare_test::test_status_change_on_nonexistent_group_fails - should panic ... ok
+test autoshare_test::test_non_creator_cannot_activate - should panic ... ok
+test autoshare_test::test_non_creator_cannot_deactivate - should panic ... ok
+test autoshare_test::test_transfer_admin_unauthorized - should panic ... ok
+test autoshare_test::test_remove_non_existent_token_fails - should panic ... ok
+test autoshare_test::test_transfer_admin ... ok
+test autoshare_test::test_remove_supported_token ... ok
+test autoshare_test::test_update_members_invalid_percentage - should panic ... ok
+test autoshare_test::test_withdraw_insufficient_balance - should panic ... ok
+test autoshare_test::test_withdraw_negative_amount - should panic ... ok
+test autoshare_test::test_update_members_success ... ok
+test autoshare_test::test_viewing_inactive_group_works ... ok
+test autoshare_test::test_withdraw_zero_amount - should panic ... ok
+test mock_token_test::test_insufficient_balance - should panic ... ok
+test mock_token_test::test_invalid_mint_amount - should panic ... ok
+test autoshare_test::test_update_members_unauthorized - should panic ... ok
+test pause_test::test_admin_can_pause ... ok
+test mock_token_test::test_invalid_transfer_amount - should panic ... ok
+test pause_test::test_cannot_unpause_not_paused - should panic ... ok
+test autoshare_test::test_updating_inactive_group_fails - should panic ... ok
+test pause_test::test_add_member_fails_when_paused - should panic ... ok
+test mock_token_test::test_mock_token ... ok
+test pause_test::test_admin_can_unpause ... ok
+test pause_test::test_cannot_pause_already_paused - should panic ... ok
+test pause_test::test_non_admin_cannot_pause - should panic ... ok
+test pause_test::test_create_fails_when_paused - should panic ... ok
+test test_utils_test::test_create_zero_users ... ok
+test pause_test::test_non_admin_cannot_unpause - should panic ... ok
+test test_utils_test::test_mock_token_helpers ... ok
+test pause_test::test_paused_status_returned_correctly ... ok
+test test_utils_test::test_setup_test_env ... ok
+test pause_test::test_operations_work_after_unpause ... ok
+test test_utils_test::test_autoshare_helpers ... ok
+test pause_test::test_read_functions_work_when_paused ... ok
+
+test result: ok. 80 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.48s
+
