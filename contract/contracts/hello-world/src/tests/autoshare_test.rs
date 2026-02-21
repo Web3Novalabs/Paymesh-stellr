@@ -3,6 +3,7 @@ use crate::mock_token::{MockToken, MockTokenClient};
 use crate::test_utils::{create_test_group, setup_test_env};
 use crate::{AutoShareContract, AutoShareContractClient};
 
+use soroban_sdk::testutils::Events;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
 fn create_helper(
     client: &AutoShareContractClient,
@@ -1611,3 +1612,4 @@ fn test_create_group_with_payment() {
     assert_eq!(details.usage_count, usage_count);
     assert_eq!(details.total_usages_paid, usage_count);
 }
+
