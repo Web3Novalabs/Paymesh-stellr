@@ -46,6 +46,24 @@ pub fn create_autoshare(
         return Err(Error::InvalidUsageCount);
     }
 
+    if name.len() == 0 || name.len() > 64 {
+        return Err(Error::InvalidInput);
+    }
+
+    let mut buf = [0u8; 64];
+    name.copy_into_slice(&mut buf[..name.len() as usize]);
+    let mut has_non_whitespace = false;
+    for i in 0..name.len() as usize {
+        let b = buf[i];
+        if b != b' ' && b != b'\t' && b != b'\n' && b != b'\r' {
+            has_non_whitespace = true;
+            break;
+        }
+    }
+    if !has_non_whitespace {
+        return Err(Error::InvalidInput);
+    }
+
     // Verify token is supported
     if !is_token_supported(env.clone(), payment_token.clone()) {
         return Err(Error::UnsupportedToken);
