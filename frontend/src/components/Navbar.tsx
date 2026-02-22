@@ -40,8 +40,9 @@ export function Navbar() {
             <a
               key={item.name}
               href={item.href}
-              className={`px-6 py-[15px] rounded-full text-[#dddddd] text-xs font-black tracking-[0] uppercase transition-colors ${item.name === "Overview" ? "bg-[#5B63D6]" : "hover:bg-[#5B63D6]"
-                }`}
+              className={`px-6 py-[15px] rounded-full text-[#dddddd] text-xs font-black tracking-[0] uppercase transition-colors ${
+                item.name === "Overview" ? "bg-[#5B63D6]" : "hover:bg-[#5B63D6]"
+              }`}
             >
               {item.name}
             </a>
@@ -50,9 +51,7 @@ export function Navbar() {
       </div>
 
       {/* Connect Button (Desktop) */}
-      {/* <div className="hidden md:block"> */}
       <ConnectWalletButton />
-      {/* </div> */}
 
       {/* Mobile menu button */}
       <div className="flex md:hidden">
