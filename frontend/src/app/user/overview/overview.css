@@ -1,0 +1,216 @@
+.overview-layout {
+  min-height: 100vh;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 7rem 2.5rem 3rem;
+  position: relative;
+  z-index: 10;
+}
+
+.overview-content-wrap {
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.overview-coins-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  scrollbar-width: none;
+}
+
+.overview-coins-row::-webkit-scrollbar {
+  display: none;
+}
+
+.overview-coin {
+  width: 7rem;
+  height: 7rem;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.overview-coin-offset {
+  transform: translateY(2px);
+}
+
+.overview-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.5);
+  margin-bottom: 2rem;
+}
+
+.overview-cards-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.overview-card {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    120deg,
+    rgba(20, 27, 54, 0.8),
+    rgba(8, 12, 28, 0.8)
+  );
+  backdrop-filter: blur(16px);
+  padding: 1.25rem;
+}
+
+.overview-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.overview-card-title {
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.overview-view-all {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: #e2e7ff;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.2s ease;
+}
+
+.overview-view-all:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.overview-table-head {
+  color: #94a4c1;
+  font-size: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.overview-groups-grid {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1.5fr 0.7fr 0.8fr;
+}
+
+.overview-funds-grid {
+  display: grid;
+  align-items: center;
+  gap: 0.75rem;
+  grid-template-columns: 1fr 1.4fr;
+}
+
+.overview-fund-row {
+  min-height: 2rem;
+}
+
+.overview-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.overview-row-text {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.overview-align-right {
+  text-align: right;
+}
+
+.overview-align-center {
+  text-align: center;
+}
+
+.overview-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.overview-status-active {
+  background: rgba(13, 43, 34, 0.7);
+  color: #30d191;
+  border-color: rgba(48, 209, 145, 0.2);
+}
+
+.overview-status-paid {
+  background: rgba(26, 31, 70, 0.7);
+  color: #6e8bff;
+  border-color: rgba(110, 139, 255, 0.2);
+}
+
+.overview-progress-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(16, 21, 45, 0.7);
+  padding: 0.25rem 0.75rem;
+}
+
+.overview-progress-track {
+  width: 2.5rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.overview-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: #5d63ea;
+}
+
+.overview-progress-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 1024px) {
+  .overview-layout {
+    padding: 7rem 1.5rem 2.5rem;
+  }
+
+  .overview-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .overview-layout {
+    padding: 6.5rem 1rem 2rem;
+  }
+
+  .overview-coin {
+    width: 5rem;
+    height: 5rem;
+  }
+
+  .overview-card {
+    padding: 1rem;
+  }
+
+  .overview-card-title {
+    font-size: 1.125rem;
+  }
+}
