@@ -4,6 +4,8 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Users, TrendingUp, ChevronRight, Wallet } from "lucide-react";
 import Image from "next/image";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { useState, useEffect } from "react";
 
 export type ActiveGroup = {
   id: string;
@@ -231,10 +233,79 @@ function GroupRow({ group, index, maxFunds }: { group: ActiveGroup; index: numbe
 }
 
 export default function ActiveGroupsWidget() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const groups = MOCK_ACTIVE_GROUPS;
   const maxFunds = Math.max(...groups.map((g) => g.totalFunds));
   const totalAllFunds = groups.reduce((sum, g) => sum + g.totalFunds, 0);
   const totalMembers = groups.reduce((sum, g) => sum + g.members, 0);
+
+  if (isLoading) {
+    return (
+      <div className="w-full">
+        <div className="bg-[#0A0B0F]/60 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-white/[0.06] shadow-[0_8px_40px_rgba(0,0,0,0.4)] overflow-hidden">
+          {/* Header Skeleton */}
+          <div className="px-4 sm:px-6 pt-5 sm:pt-6 pb-4 sm:pb-5 border-b border-white/[0.04]">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <Skeleton className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-[14px] bg-white/10" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32 sm:w-40 bg-white/10" />
+                  <Skeleton className="h-3 w-48 sm:w-56 bg-white/10" />
+                </div>
+              </div>
+              <Skeleton className="h-7 w-16 sm:w-20 rounded-full bg-white/10" />
+            </div>
+
+            {/* Summary Stats Row Skeleton */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white/[0.02] rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-3 border border-white/[0.03]">
+                  <Skeleton className="h-3 w-16 sm:w-20 mb-2 bg-white/10" />
+                  <Skeleton className="h-5 sm:h-6 w-20 sm:w-24 bg-white/10" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Groups List Skeleton */}
+          <div className="px-3 sm:px-4 py-2 sm:py-3 space-y-1 sm:space-y-1.5 max-h-[420px] overflow-y-auto">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/[0.04]">
+                <Skeleton className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/10" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-24 sm:w-32 bg-white/10" />
+                    <Skeleton className="h-4 w-12 sm:w-16 rounded-full bg-white/10" />
+                  </div>
+                  <Skeleton className="h-1.5 w-full rounded-full bg-white/10" />
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <Skeleton className="h-3 w-16 sm:w-20 bg-white/10" />
+                    <Skeleton className="h-3 w-16 sm:w-20 bg-white/10" />
+                  </div>
+                </div>
+                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                  <Skeleton className="h-4 sm:h-5 w-16 sm:w-20 bg-white/10" />
+                  <Skeleton className="h-3 w-12 sm:w-16 bg-white/10" />
+                </div>
+                <Skeleton className="w-4 h-4 rounded bg-white/10 flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+
+          {/* Footer Skeleton */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-white/[0.04] bg-white/[0.01] flex justify-center">
+            <Skeleton className="h-3 w-48 sm:w-64 bg-white/10" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div

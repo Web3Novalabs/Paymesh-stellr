@@ -1,9 +1,22 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import EmptyState from "./components/EmptyState";
 import { TransactionData } from "./components/TransactionRow";
 import Pagination from "./components/Pagination";
 import { TransactionList } from "./components/TransactionList";
+import { Skeleton } from "@/src/components/ui/skeleton";
+
+function TransactionRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 p-3 border-b border-white/5">
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-24 bg-white/10" />
+        <Skeleton className="h-3 w-32 bg-white/10" />
+      </div>
+      <Skeleton className="h-4 w-12 bg-white/10" />
+    </div>
+  );
+}
 
 const MOCK_TRANSACTIONS: TransactionData[] = [
   {
@@ -107,6 +120,13 @@ const ITEMS_PER_PAGE = 10;
 export default function TransactionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showEmpty] = useState(false); // Set to false to show transactions by default
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const totalPages = Math.ceil(TOTAL_ITEMS / ITEMS_PER_PAGE);
   const transactions = showEmpty ? [] : MOCK_TRANSACTIONS;
 
@@ -116,7 +136,15 @@ export default function TransactionsPage() {
         <>
           <div className="bg-[#0A0B0F]/40 backdrop-blur-xl rounded-xl sm:rounded-2xl lg:rounded-3xl border border-white/10 shadow-2xl flex flex-col overflow-hidden p-2 sm:p-3 lg:p-4 min-h-[400px] sm:min-h-[500px] max-h-[400px] w-full">
             <div className="flex-1 w-full overflow-y-auto transaction-list-scrollable">
-              <TransactionList transactions={transactions} />
+              {isLoading ? (
+                <div className="divide-y divide-white/5">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <TransactionRowSkeleton key={i} />
+                  ))}
+                </div>
+              ) : (
+                <TransactionList transactions={transactions} />
+              )}
             </div>
           </div>
           <div className="w-full max-w-full">
