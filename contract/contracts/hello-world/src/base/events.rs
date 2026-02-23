@@ -60,8 +60,12 @@ pub struct Withdrawal {
 
 #[contractevent(data_format = "single-value")]
 #[derive(Clone)]
-pub struct GroupDeleted {
+pub struct Distribution {
     #[topic]
-    pub deleter: Address,
     pub id: BytesN<32>,
+    #[topic]
+    pub token: Address,
+    #[topic]
+    pub sender: Address,
+    pub amount: i128,
 }

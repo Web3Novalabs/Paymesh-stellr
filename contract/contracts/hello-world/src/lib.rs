@@ -102,8 +102,15 @@ impl AutoShareContract {
     }
 
     /// Adds a member to a group with specified percentage.
-    pub fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: u32) {
-        autoshare_logic::add_group_member(env, id, address, percentage).unwrap();
+    /// Only the group creator (caller) may add members.
+    pub fn add_group_member(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        address: Address,
+        percentage: u32,
+    ) {
+        autoshare_logic::add_group_member(env, id, caller, address, percentage).unwrap();
     }
 
     /// Removes a single member from a group. Only the creator can call; group must be active.
@@ -175,6 +182,11 @@ impl AutoShareContract {
     /// Checks if a token is supported.
     pub fn is_token_supported(env: Env, token: Address) -> bool {
         autoshare_logic::is_token_supported(env, token)
+    }
+
+    /// Distributes a payment among group members based on their percentages.
+    pub fn distribute(env: Env, id: BytesN<32>, token: Address, amount: i128, sender: Address) {
+        autoshare_logic::distribute(env, id, token, amount, sender).unwrap();
     }
 
     // ============================================================================
@@ -263,5 +275,5 @@ pub mod test_utils;
 mod test_utils_test;
 
 #[cfg(test)]
-#[path = "tests/delete_group_test.rs"]
-mod delete_group_test;
+#[path = "tests/distribute_test.rs"]
+mod distribute_test;

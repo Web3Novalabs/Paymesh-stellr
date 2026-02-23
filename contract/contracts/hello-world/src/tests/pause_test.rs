@@ -181,7 +181,7 @@ fn test_add_member_fails_when_paused() {
     token_admin_client.mint(&creator, &10000000);
     client.create(&id, &name, &creator, &100u32, &token_address);
     client.pause(&admin);
-    client.add_group_member(&id, &member, &50u32);
+    client.add_group_member(&id, &creator, &member, &50u32);
 }
 
 #[test]

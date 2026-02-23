@@ -69,7 +69,14 @@ pub trait AutoShareTrait {
     fn get_group_members(env: Env, id: BytesN<32>) -> Vec<GroupMember>;
 
     /// Adds a member to a group with specified percentage.
-    fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: u32);
+    /// Only the group creator (caller) may add members.
+    fn add_group_member(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        address: Address,
+        percentage: u32,
+    );
 
     /// Removes a single member from a group. Only the creator can call; group must be active.
     /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
@@ -103,6 +110,9 @@ pub trait AutoShareTrait {
 
     /// Checks if a token is supported.
     fn is_token_supported(env: Env, token: Address) -> bool;
+
+    /// Distributes a payment among group members based on their percentages.
+    fn distribute(env: Env, id: BytesN<32>, token: Address, amount: i128, sender: Address);
 
     // ============================================================================
     // Payment Configuration

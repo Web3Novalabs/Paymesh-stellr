@@ -1,7 +1,7 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    GroupActivated, GroupDeactivated, GroupDeleted, Withdrawal,
+    Distribution, GroupActivated, GroupDeactivated, Withdrawal,
 };
 use crate::base::types::{AutoShareDetails, GroupMember, PaymentHistory};
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
@@ -168,10 +168,13 @@ pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, E
 pub fn add_group_member(
     env: Env,
     id: BytesN<32>,
+    caller: Address,
     address: Address,
     percentage: u32,
 ) -> Result<(), Error> {
-    // Check if contract is paused
+    // Require caller auth and check pause
+    caller.require_auth();
+
     if get_paused_status(&env) {
         return Err(Error::ContractPaused);
     }
@@ -183,6 +186,15 @@ pub fn add_group_member(
         .get(&key)
         .ok_or(Error::NotFound)?;
 
+    // Only the group creator can add members
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
     // Check if already a member
     for member in details.members.iter() {
         if member.address == address {
@@ -192,7 +204,7 @@ pub fn add_group_member(
 
     // Add new member
     details.members.push_back(GroupMember {
-        address,
+        address: address.clone(),
         percentage,
     });
 
@@ -201,6 +213,20 @@ pub fn add_group_member(
 
     // Save updated details
     env.storage().persistent().set(&key, &details);
+
+    // Also update the GroupMembers storage to keep both places in sync
+    let members_key = DataKey::GroupMembers(id.clone());
+    let mut members: Vec<GroupMember> = env
+        .storage()
+        .persistent()
+        .get(&members_key)
+        .unwrap_or(Vec::new(&env));
+    members.push_back(GroupMember {
+        address: address.clone(),
+        percentage,
+    });
+    env.storage().persistent().set(&members_key, &members);
+
     Ok(())
 }
 
@@ -892,6 +918,76 @@ pub fn withdraw(
         recipient,
     }
     .publish(&env);
+    Ok(())
+}
+
+#[allow(clippy::needless_borrows_for_generic_args)]
+pub fn distribute(
+    env: Env,
+    id: BytesN<32>,
+    token: Address,
+    amount: i128,
+    sender: Address,
+) -> Result<(), Error> {
+    sender.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    if amount <= 0 {
+        return Err(Error::InvalidAmount);
+    }
+
+    if !is_token_supported(env.clone(), token.clone()) {
+        return Err(Error::UnsupportedToken);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    if details.usage_count == 0 {
+        return Err(Error::NoUsagesRemaining);
+    }
+
+    validate_members(&details.members)?;
+
+    let client = token::TokenClient::new(&env, &token);
+    client.transfer(&sender, &env.current_contract_address(), &amount);
+
+    let mut distributed: i128 = 0;
+    let members_len = details.members.len() as usize;
+    for (idx, member) in details.members.iter().enumerate() {
+        let share = if idx + 1 < members_len {
+            (amount * (member.percentage as i128)) / 100
+        } else {
+            amount - distributed
+        };
+        if share > 0 {
+            client.transfer(&env.current_contract_address(), &member.address, &share);
+            distributed += share;
+        }
+    }
+
+    details.usage_count -= 1;
+    env.storage().persistent().set(&key, &details);
+
+    Distribution {
+        id,
+        token,
+        sender,
+        amount,
+    }
+    .publish(&env);
+
     Ok(())
 }
 

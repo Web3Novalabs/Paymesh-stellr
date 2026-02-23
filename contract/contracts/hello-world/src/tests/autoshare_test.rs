@@ -622,7 +622,7 @@ fn test_add_duplicate_member() {
     create_helper(&client, &id, &name, &creator, &members, &test_env);
 
     // Try to add the same member again - should fail
-    client.add_group_member(&id, &member1, &50);
+    client.add_group_member(&id, &creator, &member1, &50);
 }
 
 #[test]
@@ -634,7 +634,8 @@ fn test_add_member_to_non_existent_group() {
     let id = BytesN::from_array(&test_env.env, &[99u8; 32]);
     let member = Address::generate(&test_env.env);
 
-    client.add_group_member(&id, &member, &50);
+    let caller = Address::generate(&test_env.env);
+    client.add_group_member(&id, &caller, &member, &50);
 }
 
 #[test]
@@ -659,7 +660,7 @@ fn test_add_member_invalid_total_percentage() {
 
     // Try to add another member with 50% (total would be 150%) - should fail
     let member2 = Address::generate(&test_env.env);
-    client.add_group_member(&id, &member2, &50);
+    client.add_group_member(&id, &creator, &member2, &50);
 }
 
 #[test]
