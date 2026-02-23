@@ -1,7 +1,7 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    GroupActivated, GroupDeactivated, Withdrawal,
+    GroupActivated, GroupDeactivated, GroupDeleted, Withdrawal,
 };
 use crate::base::types::{AutoShareDetails, GroupMember, PaymentHistory};
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
@@ -704,6 +704,106 @@ pub fn is_group_active(env: Env, id: BytesN<32>) -> Result<bool, Error> {
         .ok_or(Error::NotFound)?;
     Ok(details.is_active)
 }
+
+// ============================================================================
+// Group Deletion
+// ============================================================================
+
+/// Permanently deletes a group from the contract.
+/// Requirements:
+/// 1. Caller must be the group creator or admin
+/// 2. Group must be deactivated
+/// 3. Group must have 0 remaining usages (or they are forfeited)
+/// 4. Removes group from AllGroups list
+/// 5. Removes AutoShare(id) entry
+/// 6. Removes GroupMembers(id) entry
+/// 7. Archives payment history before deletion (keeps it for audit trail)
+/// 8. Emits GroupDeleted event
+pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // Step 1: Verify group exists
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    // Step 2: Verify caller is creator or admin
+    let admin_result = get_admin(env.clone());
+    let is_admin = admin_result.is_ok() && admin_result.unwrap() == caller;
+    let is_creator = details.creator == caller;
+
+    if !is_creator && !is_admin {
+        return Err(Error::Unauthorized);
+    }
+
+    // Step 3: Check group is already deactivated
+    if details.is_active {
+        return Err(Error::GroupNotDeactivated);
+    }
+
+    // Step 4: Check group has 0 remaining usages (or warn about forfeiture)
+    // We allow deletion even with remaining usages, but this is a design choice
+    // In production, you might want to enforce zero usages or handle refunds
+    if details.usage_count > 0 {
+        // Option 1: Strict enforcement - uncomment to require zero usages
+        // return Err(Error::GroupHasRemainingUsages);
+        
+        // Option 2: Allow deletion with forfeiture (current implementation)
+        // The remaining usages are simply forfeited
+    }
+
+    // Step 5: Remove the group from AllGroups list
+    let all_groups_key = DataKey::AllGroups;
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&all_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    let mut new_group_ids: Vec<BytesN<32>> = Vec::new(&env);
+    for group_id in group_ids.iter() {
+        if group_id != id {
+            new_group_ids.push_back(group_id);
+        }
+    }
+    env.storage()
+        .persistent()
+        .set(&all_groups_key, &new_group_ids);
+
+    // Step 6: Remove the AutoShare(id) entry
+    env.storage().persistent().remove(&key);
+
+    // Step 7: Remove GroupMembers(id) entry
+    let members_key = DataKey::GroupMembers(id.clone());
+    env.storage().persistent().remove(&members_key);
+
+    // Step 8: Archive payment history (we keep it for audit trail)
+    // Payment history is intentionally NOT deleted to maintain financial records
+    // This is a best practice for compliance and auditing purposes
+    // The entries remain in:
+    // - DataKey::UserPaymentHistory(Address)
+    // - DataKey::GroupPaymentHistory(BytesN<32>)
+
+    // Step 9: Emit deletion event
+    GroupDeleted {
+        deleter: caller,
+        id: id.clone(),
+    }
+    .publish(&env);
+
+    Ok(())
+}
+
+// ============================================================================
+// Contract Balance & Withdrawal
+// ============================================================================
 
 pub fn get_contract_balance(env: Env, token: Address) -> i128 {
     let client = token::TokenClient::new(&env, &token);

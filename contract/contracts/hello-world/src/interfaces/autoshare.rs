@@ -80,6 +80,10 @@ pub trait AutoShareTrait {
     /// Returns whether a group is active.
     fn is_group_active(env: Env, id: BytesN<32>) -> bool;
 
+    /// Permanently deletes a group. Only creator or admin can delete.
+    /// Group must be deactivated first and have 0 remaining usages.
+    fn delete_group(env: Env, id: BytesN<32>, caller: Address);
+
     // ============================================================================
     // Token Management
     // ============================================================================

@@ -25,4 +25,6 @@ pub enum Error {
     GroupAlreadyActive = 19,
     GroupAlreadyInactive = 20,
     InsufficientContractBalance = 21,
+    GroupNotDeactivated = 22,
+    GroupHasRemainingUsages = 23,
 }

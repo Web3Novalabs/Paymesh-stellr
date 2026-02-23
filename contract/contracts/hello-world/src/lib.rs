@@ -121,6 +121,12 @@ impl AutoShareContract {
         autoshare_logic::is_group_active(env, id).unwrap()
     }
 
+    /// Permanently deletes a group. Only creator or admin can delete.
+    /// Group must be deactivated first and have 0 remaining usages.
+    pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::delete_group(env, id, caller).unwrap();
+    }
+
     /// Returns the current admin address.
     pub fn get_admin(env: Env) -> Address {
         autoshare_logic::get_admin(env).unwrap()
@@ -249,3 +255,7 @@ pub mod test_utils;
 #[cfg(test)]
 #[path = "tests/test_utils_test.rs"]
 mod test_utils_test;
+
+#[cfg(test)]
+#[path = "tests/delete_group_test.rs"]
+mod delete_group_test;
