@@ -165,6 +165,11 @@ impl AutoShareContract {
         autoshare_logic::is_token_supported(env, token)
     }
 
+    /// Distributes a payment among group members based on their percentages.
+    pub fn distribute(env: Env, id: BytesN<32>, token: Address, amount: i128, sender: Address) {
+        autoshare_logic::distribute(env, id, token, amount, sender).unwrap();
+    }
+
     // ============================================================================
     // Payment Configuration
     // ============================================================================
@@ -249,3 +254,7 @@ pub mod test_utils;
 #[cfg(test)]
 #[path = "tests/test_utils_test.rs"]
 mod test_utils_test;
+
+#[cfg(test)]
+#[path = "tests/distribute_test.rs"]
+mod distribute_test;

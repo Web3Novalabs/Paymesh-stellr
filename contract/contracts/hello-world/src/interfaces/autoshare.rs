@@ -96,6 +96,9 @@ pub trait AutoShareTrait {
     /// Checks if a token is supported.
     fn is_token_supported(env: Env, token: Address) -> bool;
 
+    /// Distributes a payment among group members based on their percentages.
+    fn distribute(env: Env, id: BytesN<32>, token: Address, amount: i128, sender: Address);
+
     // ============================================================================
     // Payment Configuration
     // ============================================================================

@@ -57,3 +57,15 @@ pub struct Withdrawal {
     pub recipient: Address,
     pub amount: i128,
 }
+
+#[contractevent(data_format = "single-value")]
+#[derive(Clone)]
+pub struct Distribution {
+    #[topic]
+    pub id: BytesN<32>,
+    #[topic]
+    pub token: Address,
+    #[topic]
+    pub sender: Address,
+    pub amount: i128,
+}

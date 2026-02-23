@@ -1,7 +1,7 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    GroupActivated, GroupDeactivated, Withdrawal,
+    Distribution, GroupActivated, GroupDeactivated, Withdrawal,
 };
 use crate::base::types::{AutoShareDetails, GroupMember, PaymentHistory};
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
@@ -738,6 +738,76 @@ pub fn withdraw(
         recipient,
     }
     .publish(&env);
+    Ok(())
+}
+
+#[allow(clippy::needless_borrows_for_generic_args)]
+pub fn distribute(
+    env: Env,
+    id: BytesN<32>,
+    token: Address,
+    amount: i128,
+    sender: Address,
+) -> Result<(), Error> {
+    sender.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    if amount <= 0 {
+        return Err(Error::InvalidAmount);
+    }
+
+    if !is_token_supported(env.clone(), token.clone()) {
+        return Err(Error::UnsupportedToken);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    if details.usage_count == 0 {
+        return Err(Error::NoUsagesRemaining);
+    }
+
+    validate_members(&details.members)?;
+
+    let client = token::TokenClient::new(&env, &token);
+    client.transfer(&sender, &env.current_contract_address(), &amount);
+
+    let mut distributed: i128 = 0;
+    let members_len = details.members.len() as usize;
+    for (idx, member) in details.members.iter().enumerate() {
+        let share = if idx + 1 < members_len {
+            (amount * (member.percentage as i128)) / 100
+        } else {
+            amount - distributed
+        };
+        if share > 0 {
+            client.transfer(&env.current_contract_address(), &member.address, &share);
+            distributed += share;
+        }
+    }
+
+    details.usage_count -= 1;
+    env.storage().persistent().set(&key, &details);
+
+    Distribution {
+        id,
+        token,
+        sender,
+        amount,
+    }
+    .publish(&env);
+
     Ok(())
 }
 
