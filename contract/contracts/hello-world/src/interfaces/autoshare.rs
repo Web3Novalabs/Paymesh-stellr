@@ -71,6 +71,10 @@ pub trait AutoShareTrait {
     /// Adds a member to a group with specified percentage.
     fn add_group_member(env: Env, id: BytesN<32>, address: Address, percentage: u32);
 
+    /// Removes a single member from a group. Only the creator can call; group must be active.
+    /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
+    fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address);
+
     /// Deactivates a group. Only the creator can deactivate.
     fn deactivate_group(env: Env, id: BytesN<32>, caller: Address);
 

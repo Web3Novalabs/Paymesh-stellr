@@ -204,6 +204,60 @@ pub fn add_group_member(
     Ok(())
 }
 
+pub fn remove_group_member(
+    env: Env,
+    id: BytesN<32>,
+    caller: Address,
+    member_address: Address,
+) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    let mut found = false;
+    let mut new_members: Vec<GroupMember> = Vec::new(&env);
+    for member in details.members.iter() {
+        if member.address == member_address {
+            found = true;
+        } else {
+            new_members.push_back(member.clone());
+        }
+    }
+    if !found {
+        return Err(Error::MemberNotFound);
+    }
+
+    details.members = new_members.clone();
+    env.storage().persistent().set(&key, &details);
+
+    let members_key = DataKey::GroupMembers(id.clone());
+    env.storage().persistent().set(&members_key, &new_members);
+
+    AutoshareUpdated {
+        id: id.clone(),
+        updater: caller,
+    }
+    .publish(&env);
+    Ok(())
+}
+
 // ============================================================================
 // Admin Management
 // ============================================================================
