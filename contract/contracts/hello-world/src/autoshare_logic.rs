@@ -132,17 +132,26 @@ pub fn get_autoshare(env: Env, id: BytesN<32>) -> Result<AutoShareDetails, Error
     result.ok_or(Error::NotFound)
 }
 
-pub fn get_all_groups(env: Env) -> Vec<AutoShareDetails> {
+fn get_all_group_ids(env: &Env) -> Vec<BytesN<32>> {
     let all_groups_key = DataKey::AllGroups;
     let group_ids: Vec<BytesN<32>> = env
         .storage()
         .persistent()
         .get(&all_groups_key)
-        .unwrap_or(Vec::new(&env));
+        .unwrap_or(Vec::new(env));
     if !group_ids.is_empty() {
-        bump_persistent(&env, &all_groups_key);
+        bump_persistent(env, &all_groups_key);
     }
+    group_ids
+}
 
+pub fn get_group_count(env: Env) -> u32 {
+    let group_ids = get_all_group_ids(&env);
+    group_ids.len()
+}
+
+pub fn get_all_groups(env: Env) -> Vec<AutoShareDetails> {
+    let group_ids = get_all_group_ids(&env);
     let mut result: Vec<AutoShareDetails> = Vec::new(&env);
     for id in group_ids.iter() {
         if let Ok(details) = get_autoshare(env.clone(), id) {
@@ -153,38 +162,35 @@ pub fn get_all_groups(env: Env) -> Vec<AutoShareDetails> {
 }
 
 pub fn get_groups_by_creator(env: Env, creator: Address) -> Vec<AutoShareDetails> {
-    let all_groups = get_all_groups(env.clone());
+    let group_ids = get_all_group_ids(&env);
     let mut result: Vec<AutoShareDetails> = Vec::new(&env);
 
-    for group in all_groups.iter() {
-        if group.creator == creator {
-            result.push_back(group);
+    for id in group_ids.iter() {
+        if let Ok(group) = get_autoshare(env.clone(), id) {
+            if group.creator == creator {
+                result.push_back(group);
+            }
         }
     }
     result
 }
 
-pub fn get_groups_paginated(env: Env, offset: u32, limit: u32) -> crate::base::types::GroupPage {
-    let all_groups_key = DataKey::AllGroups;
-    let group_ids: Vec<BytesN<32>> = env
-        .storage()
-        .persistent()
-        .get(&all_groups_key)
-        .unwrap_or(Vec::new(&env));
-
+pub fn get_groups_paginated(
+    env: Env,
+    start_index: u32,
+    limit: u32,
+) -> crate::base::types::GroupPage {
+    let group_ids = get_all_group_ids(&env);
     let total = group_ids.len();
 
     // Cap limit at 20 as per requirement
-    let mut actual_limit = limit;
-    if actual_limit > 20 {
-        actual_limit = 20;
-    }
+    let actual_limit = limit.min(20);
 
     let mut groups: Vec<AutoShareDetails> = Vec::new(&env);
 
-    if offset < total {
-        let end = (offset + actual_limit).min(total);
-        for i in offset..end {
+    if actual_limit > 0 && start_index < total {
+        let end = start_index.saturating_add(actual_limit).min(total);
+        for i in start_index..end {
             if let Some(id) = group_ids.get(i) {
                 if let Ok(details) = get_autoshare(env.clone(), id) {
                     groups.push_back(details);
@@ -196,7 +202,7 @@ pub fn get_groups_paginated(env: Env, offset: u32, limit: u32) -> crate::base::t
     crate::base::types::GroupPage {
         groups,
         total,
-        offset,
+        offset: start_index,
         limit: actual_limit,
     }
 }
@@ -207,17 +213,17 @@ pub fn get_groups_by_creator_paginated(
     offset: u32,
     limit: u32,
 ) -> crate::base::types::GroupPage {
-    let all_groups_key = DataKey::AllGroups;
-    let group_ids: Vec<BytesN<32>> = env
-        .storage()
-        .persistent()
-        .get(&all_groups_key)
-        .unwrap_or(Vec::new(&env));
+    let group_ids = get_all_group_ids(&env);
 
     // Cap limit at 20 as per requirement
-    let mut actual_limit = limit;
-    if actual_limit > 20 {
-        actual_limit = 20;
+    let actual_limit = limit.min(20);
+    if actual_limit == 0 {
+        return crate::base::types::GroupPage {
+            groups: Vec::new(&env),
+            total: 0,
+            offset,
+            limit: actual_limit,
+        };
     }
 
     let mut groups: Vec<AutoShareDetails> = Vec::new(&env);

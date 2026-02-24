@@ -93,8 +93,8 @@ impl AutoShareContract {
     }
 
     /// Returns a paginated list of groups.
-    pub fn get_groups_paginated(env: Env, offset: u32, limit: u32) -> base::types::GroupPage {
-        autoshare_logic::get_groups_paginated(env, offset, limit)
+    pub fn get_groups_paginated(env: Env, start_index: u32, limit: u32) -> base::types::GroupPage {
+        autoshare_logic::get_groups_paginated(env, start_index, limit)
     }
 
     /// Returns a paginated list of groups created by a specific address.
@@ -105,6 +105,11 @@ impl AutoShareContract {
         limit: u32,
     ) -> base::types::GroupPage {
         autoshare_logic::get_groups_by_creator_paginated(env, creator, offset, limit)
+    }
+
+    /// Returns the total number of groups.
+    pub fn get_group_count(env: Env) -> u32 {
+        autoshare_logic::get_group_count(env)
     }
 
     /// Checks if an address is a member of a specific group.

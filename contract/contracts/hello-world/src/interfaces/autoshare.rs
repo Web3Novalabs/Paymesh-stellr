@@ -65,6 +65,9 @@ pub trait AutoShareTrait {
     /// Retrieves all AutoShare groups created by a specific address.
     fn get_groups_by_creator(env: Env, creator: Address) -> Vec<AutoShareDetails>;
 
+    /// Returns the total number of groups.
+    fn get_group_count(env: Env) -> u32;
+
     /// Checks if an address is a member of a specific group.
     fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> bool;
 

@@ -54,6 +54,12 @@ fn test_get_groups_paginated() {
     let page_empty = client.get_groups_paginated(&30, &10);
     assert_eq!(page_empty.groups.len(), 0);
     assert_eq!(page_empty.total, 25);
+
+    // Test zero limit
+    let page_zero_limit = client.get_groups_paginated(&0, &0);
+    assert_eq!(page_zero_limit.groups.len(), 0);
+    assert_eq!(page_zero_limit.total, 25);
+    assert_eq!(page_zero_limit.limit, 0);
 }
 
 #[test]
@@ -64,6 +70,50 @@ fn test_get_groups_paginated_empty() {
     let page = client.get_groups_paginated(&0, &10);
     assert_eq!(page.groups.len(), 0);
     assert_eq!(page.total, 0);
+}
+
+#[test]
+fn test_get_group_count() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    assert_eq!(client.get_group_count(), 0);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(crate::base::types::GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+    create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
+    create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        3,
+        &token,
+    );
+
+    assert_eq!(client.get_group_count(), 3);
 }
 
 #[test]
