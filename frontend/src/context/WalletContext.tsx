@@ -1,13 +1,25 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
-import { connect, disconnect, getPublicKey } from "@/hooks/stellar-wallets-kit";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import {
+  connect,
+  disconnect,
+  getPublicKey,
+  connectToWallet,
+} from "@/hooks/stellar-wallets-kit";
 
 interface WalletContextType {
   publicKey: string | null;
   isConnected: boolean;
   isLoading: boolean;
-  connectWallet: () => Promise<void>;
+  connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => Promise<void>;
 }
 
@@ -25,11 +37,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const connectWallet = useCallback(async () => {
-    await connect(async () => {
-      const key = await getPublicKey();
-      setPublicKey(key);
-    });
+  const connectWallet = useCallback(async (walletId?: string) => {
+    if (walletId) {
+      await connectToWallet(walletId, async () => {
+        const key = await getPublicKey();
+        setPublicKey(key);
+      });
+    } else {
+      await connect(async () => {
+        const key = await getPublicKey();
+        setPublicKey(key);
+      });
+    }
   }, []);
 
   const disconnectWallet = useCallback(async () => {

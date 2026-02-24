@@ -86,3 +86,31 @@ export async function connect(callback?: () => Promise<void>) {
     },
   });
 }
+
+export async function connectToWallet(
+  walletId: string,
+  callback?: () => Promise<void>,
+) {
+  const k = getKit();
+  if (!k) {
+    console.error("Wallet kit not initialized");
+    return;
+  }
+
+  console.log(`Attempting to connect to wallet: ${walletId}`);
+  try {
+    await setWallet(walletId);
+    console.log(`Wallet ${walletId} set, fetching address...`);
+
+    const { address } = await k.getAddress();
+    console.log(`Received address: ${address}`);
+
+    if (address && callback) {
+      await callback();
+    }
+    return address;
+  } catch (e) {
+    console.error(`Connection error for ${walletId}:`, e);
+    throw e;
+  }
+}
