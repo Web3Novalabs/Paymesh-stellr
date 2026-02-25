@@ -274,7 +274,7 @@ impl AutoShareContract {
     pub fn get_member_distributions(
         env: Env,
         member: Address,
-    ) -> Vec<base::types::DistributionHistory> {
+    ) -> Vec<base::types::DistributionRecord> {
         autoshare_logic::get_member_distributions(env, member)
     }
 
