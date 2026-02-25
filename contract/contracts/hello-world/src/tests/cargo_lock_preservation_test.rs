@@ -18,14 +18,19 @@
 
 #[cfg(test)]
 mod preservation_tests {
-    use std::process::Command;
-    use std::path::Path;
     use quickcheck::{quickcheck, TestResult};
+    use std::path::Path;
+    use std::process::Command;
 
     /// Helper function to get the workspace root directory
     fn get_workspace_root() -> std::path::PathBuf {
         let contract_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-        contract_dir.parent().unwrap().parent().unwrap().to_path_buf()
+        contract_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
     }
 
     /// Helper function to run a cargo command in the workspace root
@@ -49,26 +54,26 @@ mod preservation_tests {
     #[test]
     fn test_cargo_build_succeeds_with_synced_lock() {
         println!("\n=== PRESERVATION TEST: Cargo Build with In-Sync Lock ===");
-        
+
         let output = run_cargo_command(&["build", "--quiet"]);
         let exit_code = output.status.code().unwrap_or(-1);
-        
+
         println!("Result:");
         println!("  Exit code: {}", exit_code);
         println!("  Success: {}", output.status.success());
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             println!("  Error: {}", stderr);
         }
-        
+
         assert!(
             output.status.success(),
             "Cargo build should succeed when Cargo.lock is in sync. \
              This is the baseline behavior that must be preserved. Exit code: {}",
             exit_code
         );
-        
+
         println!("✓ Baseline confirmed: Build succeeds with in-sync Cargo.lock");
     }
 
@@ -84,21 +89,21 @@ mod preservation_tests {
     #[test]
     fn test_cargo_format_check_continues() {
         println!("\n=== PRESERVATION TEST: Cargo Format Check ===");
-        
+
         let output = run_cargo_command(&["fmt", "--all", "--", "--check"]);
         let exit_code = output.status.code().unwrap_or(-1);
-        
+
         println!("Result:");
         println!("  Exit code: {}", exit_code);
         println!("  Command executed: {}", exit_code != -1);
-        
+
         // The command should execute (exit code != -1)
         // It may pass (0) or fail (non-zero) based on formatting, but it should run
         assert!(
             exit_code != -1,
             "Cargo format check should execute. This is the baseline behavior that must be preserved."
         );
-        
+
         println!("✓ Baseline confirmed: Format check executes as expected");
     }
 
@@ -114,21 +119,21 @@ mod preservation_tests {
     #[test]
     fn test_cargo_test_continues() {
         println!("\n=== PRESERVATION TEST: Cargo Test ===");
-        
+
         let output = run_cargo_command(&["test", "--quiet"]);
         let exit_code = output.status.code().unwrap_or(-1);
-        
+
         println!("Result:");
         println!("  Exit code: {}", exit_code);
         println!("  Command executed: {}", exit_code != -1);
-        
+
         // The command should execute (exit code != -1)
         // It may pass (0) or fail (non-zero) based on tests, but it should run
         assert!(
             exit_code != -1,
             "Cargo test should execute. This is the baseline behavior that must be preserved."
         );
-        
+
         println!("✓ Baseline confirmed: Test execution works as expected");
     }
 
@@ -144,21 +149,29 @@ mod preservation_tests {
     #[test]
     fn test_cargo_clippy_continues() {
         println!("\n=== PRESERVATION TEST: Cargo Clippy ===");
-        
-        let output = run_cargo_command(&["clippy", "--all-targets", "--all-features", "--quiet", "--", "-D", "warnings"]);
+
+        let output = run_cargo_command(&[
+            "clippy",
+            "--all-targets",
+            "--all-features",
+            "--quiet",
+            "--",
+            "-D",
+            "warnings",
+        ]);
         let exit_code = output.status.code().unwrap_or(-1);
-        
+
         println!("Result:");
         println!("  Exit code: {}", exit_code);
         println!("  Command executed: {}", exit_code != -1);
-        
+
         // The command should execute (exit code != -1)
         // It may pass (0) or fail (non-zero) based on linting, but it should run
         assert!(
             exit_code != -1,
             "Cargo clippy should execute. This is the baseline behavior that must be preserved."
         );
-        
+
         println!("✓ Baseline confirmed: Clippy linting works as expected");
     }
 
@@ -179,7 +192,7 @@ mod preservation_tests {
         // Run build multiple times to verify consistency
         for i in 0..iterations {
             let output = run_cargo_command(&["build", "--quiet"]);
-            
+
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 eprintln!("Build failed on iteration {}: {}", i + 1, stderr);
@@ -203,7 +216,10 @@ mod preservation_tests {
             0 => ("cargo", vec!["fmt", "--all", "--", "--check"]),
             1 => ("cargo", vec!["build", "--quiet"]),
             2 => ("cargo", vec!["test", "--quiet"]),
-            3 => ("cargo", vec!["clippy", "--quiet", "--all-targets", "--all-features"]),
+            3 => (
+                "cargo",
+                vec!["clippy", "--quiet", "--all-targets", "--all-features"],
+            ),
             _ => return TestResult::discard(),
         };
 
@@ -242,7 +258,7 @@ mod preservation_tests {
         // Run build multiple times to verify caching works
         for _ in 0..build_count {
             let output = run_cargo_command(&["build", "--quiet"]);
-            
+
             if !output.status.success() {
                 return TestResult::failed();
             }
@@ -269,7 +285,7 @@ mod preservation_tests {
         };
 
         let output = run_cargo_command(&args);
-        
+
         if output.status.success() {
             TestResult::passed()
         } else {
@@ -288,13 +304,13 @@ mod preservation_tests {
     fn prop_ci_trigger_conditions_preserved(trigger_type: u8) -> TestResult {
         // Simulate different trigger scenarios by varying build parameters
         let args = match trigger_type % 2 {
-            0 => vec!["build", "--quiet"], // Simulates PR trigger
+            0 => vec!["build", "--quiet"],                  // Simulates PR trigger
             1 => vec!["build", "--quiet", "--all-targets"], // Simulates push to main
             _ => return TestResult::discard(),
         };
 
         let output = run_cargo_command(&args);
-        
+
         if output.status.success() {
             TestResult::passed()
         } else {
