@@ -50,6 +50,15 @@ pub struct DistributionHistory {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DistributionRecord {
+    pub group_id: BytesN<32>,
+    pub amount: i128,
+    pub token: Address,
+    pub timestamp: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GroupPage {
     pub groups: Vec<AutoShareDetails>,
     pub total: u32,
