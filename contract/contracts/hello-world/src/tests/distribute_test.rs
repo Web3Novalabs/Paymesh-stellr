@@ -75,16 +75,10 @@ fn test_distribute_splits_payment_and_decrements_usage() {
     // Verify member distributions
     let member1_dists = client.get_member_distributions(&member1);
     assert_eq!(member1_dists.len(), 1);
-    assert_eq!(
-        member1_dists
-            .get(0)
-            .unwrap()
-            .member_amounts
-            .get(0)
-            .unwrap()
-            .amount,
-        500
-    );
+    let record = member1_dists.get(0).unwrap();
+    assert_eq!(record.group_id, id);
+    assert_eq!(record.amount, 500);
+    assert_eq!(record.token, token);
 }
 
 #[test]
