@@ -1,6 +1,7 @@
 use crate::test_utils::{create_test_group, setup_test_env};
 use crate::AutoShareContractClient;
-use quickcheck::{quickcheck, TestResult};
+use quickcheck::TestResult;
+use quickcheck_macros::quickcheck;
 use soroban_sdk::{testutils::Address as _, Address, Vec};
 
 // Property-based tests for get_group_count function
