@@ -79,9 +79,21 @@ export function StellarWalletModal({
       await Promise.race([connectWallet(walletId), timeoutPromise]);
       toast.success("Wallet connected!");
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to connect wallet:", error);
-      const message = error.message || "Failed to connect";
+      let message = "Failed to connect";
+
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (typeof error === "string") {
+        message = error;
+      } else if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error
+      ) {
+        message = String((error as Record<string, unknown>).message);
+      }
 
       if (message.includes("rejected")) {
         toast.error("Connection rejected by user");
@@ -153,7 +165,6 @@ export function StellarWalletModal({
 
                   <div className="relative z-10 w-full h-full flex items-center justify-between px-4 bg-[#0D0D10]/40 group-hover:bg-transparent transition-colors rounded-[10px]">
                     <div className="flex items-center gap-4">
-
                       <div className="relative w-14 h-14 flex items-center justify-center rounded-xl bg-white/10 group-hover:bg-white/20 transition-colors shadow-inner overflow-hidden border border-white/10">
                         <div className=" backdrop-blur-sm" />
                         <Image
