@@ -889,6 +889,9 @@ pub fn update_members(
     let mut seen_addresses = Vec::new(&env);
 
     for member in new_members.iter() {
+        if member.percentage == 0 {
+            return Err(Error::InvalidInput);
+        }
         total_percentage += member.percentage;
 
         for seen in seen_addresses.iter() {
@@ -1336,6 +1339,9 @@ fn validate_members(members: &Vec<GroupMember>) -> Result<(), Error> {
     let mut seen_addresses = Vec::new(env);
 
     for member in members.iter() {
+        if member.percentage == 0 {
+            return Err(Error::InvalidInput);
+        }
         total_percentage += member.percentage;
         for seen in seen_addresses.iter() {
             if seen == member.address {
