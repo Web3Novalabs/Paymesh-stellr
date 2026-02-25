@@ -6,8 +6,8 @@ use crate::base::events::{
 };
 
 use crate::base::types::{
-    AutoShareDetails, DistributionHistory, FundraisingConfig, FundraisingContribution, GroupMember,
-    GroupStats, MemberAmount, PaymentHistory,
+    AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
+    FundraisingContribution, GroupMember, GroupStats, MemberAmount, PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -21,13 +21,14 @@ pub enum DataKey {
     UserPaymentHistory(Address),
     GroupPaymentHistory(BytesN<32>),
     GroupDistributionHistory(BytesN<32>),
-    MemberDistributionHistory(Address),
+    MemberDistributions(Address),
     MemberGroupEarnings(Address, BytesN<32>),
     GroupFundraising(BytesN<32>),
     GroupContributions(BytesN<32>),
     UserContributions(Address),
     GroupStats(BytesN<32>),
     IsPaused,
+    MemberGroups(Address),
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -254,6 +255,35 @@ pub fn get_groups_by_creator_paginated(
     }
 }
 
+pub fn get_groups_by_member(env: Env, member: Address) -> Vec<AutoShareDetails> {
+    let key = DataKey::MemberGroups(member);
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(&env));
+
+    if !group_ids.is_empty() {
+        bump_persistent(&env, &key);
+    }
+
+    let mut result: Vec<AutoShareDetails> = Vec::new(&env);
+
+    for id in group_ids.iter() {
+        if let Ok(group) = get_autoshare(env.clone(), id.clone()) {
+            if group.is_active {
+                result.push_back(group);
+            } else {
+                // To match behavior where inactive groups are still returned by `get_autoshare`,
+                // we include them. If they should be skipped, we add a check here.
+                result.push_back(group);
+            }
+        }
+    }
+
+    result
+}
+
 pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> Result<bool, Error> {
     let details = get_autoshare(env, id)?;
 
@@ -326,6 +356,20 @@ pub fn add_group_member(
     env.storage().persistent().set(&key, &details);
     bump_persistent(&env, &key);
 
+    // Update MemberGroups index
+    let member_groups_key = DataKey::MemberGroups(address.clone());
+    let mut member_groups: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&member_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    member_groups.push_back(id.clone());
+    env.storage()
+        .persistent()
+        .set(&member_groups_key, &member_groups);
+    bump_persistent(&env, &member_groups_key);
+
     Ok(())
 }
 
@@ -373,6 +417,31 @@ pub fn remove_group_member(
     details.members = new_members.clone();
     env.storage().persistent().set(&key, &details);
     bump_persistent(&env, &key);
+
+    // Update MemberGroups index
+    let member_groups_key = DataKey::MemberGroups(member_address.clone());
+    let member_groups: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&member_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    let mut new_member_groups: Vec<BytesN<32>> = Vec::new(&env);
+    let mut group_removed = false;
+    for group_id in member_groups.iter() {
+        if group_id != id {
+            new_member_groups.push_back(group_id);
+        } else {
+            group_removed = true;
+        }
+    }
+
+    if group_removed {
+        env.storage()
+            .persistent()
+            .set(&member_groups_key, &new_member_groups);
+        bump_persistent(&env, &member_groups_key);
+    }
 
     AutoshareUpdated {
         id: id.clone(),
@@ -766,7 +835,7 @@ fn record_distribution(
     };
 
     // Add to group's distribution history
-    let group_history_key = DataKey::GroupDistributionHistory(group_id);
+    let group_history_key = DataKey::GroupDistributionHistory(group_id.clone());
     let mut group_history: Vec<DistributionHistory> = env
         .storage()
         .persistent()
@@ -779,13 +848,19 @@ fn record_distribution(
 
     // Add to each member's distribution history
     for member_amount in member_amounts.iter() {
-        let member_history_key = DataKey::MemberDistributionHistory(member_amount.address.clone());
-        let mut member_history: Vec<DistributionHistory> = env
+        let member_history_key = DataKey::MemberDistributions(member_amount.address.clone());
+        let mut member_history: Vec<DistributionRecord> = env
             .storage()
             .persistent()
             .get(&member_history_key)
             .unwrap_or(Vec::new(&env));
-        member_history.push_back(distribution.clone());
+        let record = DistributionRecord {
+            group_id: group_id.clone(),
+            amount: member_amount.amount,
+            token: token.clone(),
+            timestamp,
+        };
+        member_history.push_back(record);
         env.storage()
             .persistent()
             .set(&member_history_key, &member_history);
@@ -800,8 +875,8 @@ pub fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionHist
         .unwrap_or(Vec::new(&env))
 }
 
-pub fn get_member_distributions(env: Env, member: Address) -> Vec<DistributionHistory> {
-    let member_history_key = DataKey::MemberDistributionHistory(member);
+pub fn get_member_distributions(env: Env, member: Address) -> Vec<DistributionRecord> {
+    let member_history_key = DataKey::MemberDistributions(member);
     env.storage()
         .persistent()
         .get(&member_history_key)
@@ -918,10 +993,74 @@ pub fn update_members(
         return Err(Error::InvalidTotalPercentage);
     }
 
+    // Determine old members for index updating
+    let old_members = details.members.clone();
+
     // Update members in details
     details.members = new_members.clone();
     env.storage().persistent().set(&key, &details);
     bump_persistent(&env, &key);
+
+    // Update MemberGroups index for removed and added members
+    for old_member in old_members.iter() {
+        let mut found_in_new = false;
+        for new_member in new_members.iter() {
+            if old_member.address == new_member.address {
+                found_in_new = true;
+                break;
+            }
+        }
+        if !found_in_new {
+            // Member was removed, remove group from their index
+            let member_groups_key = DataKey::MemberGroups(old_member.address.clone());
+            let member_groups: Vec<BytesN<32>> = env
+                .storage()
+                .persistent()
+                .get(&member_groups_key)
+                .unwrap_or(Vec::new(&env));
+
+            let mut updated_member_groups: Vec<BytesN<32>> = Vec::new(&env);
+            let mut group_removed = false;
+            for group_id in member_groups.iter() {
+                if group_id != id {
+                    updated_member_groups.push_back(group_id);
+                } else {
+                    group_removed = true;
+                }
+            }
+            if group_removed {
+                env.storage()
+                    .persistent()
+                    .set(&member_groups_key, &updated_member_groups);
+                bump_persistent(&env, &member_groups_key);
+            }
+        }
+    }
+
+    for new_member in new_members.iter() {
+        let mut found_in_old = false;
+        for old_member in old_members.iter() {
+            if new_member.address == old_member.address {
+                found_in_old = true;
+                break;
+            }
+        }
+        if !found_in_old {
+            // Member was added, add group to their index
+            let member_groups_key = DataKey::MemberGroups(new_member.address.clone());
+            let mut member_groups: Vec<BytesN<32>> = env
+                .storage()
+                .persistent()
+                .get(&member_groups_key)
+                .unwrap_or(Vec::new(&env));
+
+            member_groups.push_back(id.clone());
+            env.storage()
+                .persistent()
+                .set(&member_groups_key, &member_groups);
+            bump_persistent(&env, &member_groups_key);
+        }
+    }
 
     AutoshareUpdated {
         id: id.clone(),
@@ -1141,6 +1280,32 @@ pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Err
     // The entries remain in:
     // - DataKey::UserPaymentHistory(Address)
     // - DataKey::GroupPaymentHistory(BytesN<32>)
+
+    // Step 8: Remove group from all members' MemberGroups index
+    for member in details.members.iter() {
+        let member_groups_key = DataKey::MemberGroups(member.address.clone());
+        let member_groups: Vec<BytesN<32>> = env
+            .storage()
+            .persistent()
+            .get(&member_groups_key)
+            .unwrap_or(Vec::new(&env));
+
+        let mut updated_member_groups: Vec<BytesN<32>> = Vec::new(&env);
+        let mut group_removed = false;
+        for group_id in member_groups.iter() {
+            if group_id != id {
+                updated_member_groups.push_back(group_id);
+            } else {
+                group_removed = true;
+            }
+        }
+        if group_removed {
+            env.storage()
+                .persistent()
+                .set(&member_groups_key, &updated_member_groups);
+            bump_persistent(&env, &member_groups_key);
+        }
+    }
 
     // Step 9: Emit deletion event
     GroupDeleted {
