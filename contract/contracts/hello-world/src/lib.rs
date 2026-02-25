@@ -383,3 +383,7 @@ mod fundraising_contribute_test;
 #[cfg(test)]
 #[path = "tests/max_members_test.rs"]
 mod max_members_test;
+
+#[cfg(test)]
+#[path = "tests/group_count_property_test.rs"]
+mod group_count_property_test;

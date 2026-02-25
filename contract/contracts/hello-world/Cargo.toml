@@ -13,3 +13,5 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+quickcheck = "1.0"
+quickcheck_macros = "1.0"

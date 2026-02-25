@@ -183,3 +183,198 @@ fn test_get_groups_by_creator_paginated() {
     assert_eq!(c3_page.groups.len(), 0);
     assert_eq!(c3_page.total, 0);
 }
+
+#[test]
+fn test_get_group_count_single_group() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(crate::base::types::GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    // Create exactly one group
+    create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+
+    // Verify count is 1
+    assert_eq!(client.get_group_count(), 1);
+
+    // Verify consistency with paginated query
+    let page = client.get_groups_paginated(&0, &10);
+    assert_eq!(page.total, 1);
+    assert_eq!(client.get_group_count(), page.total);
+}
+
+#[test]
+fn test_get_group_count_large_scale() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(crate::base::types::GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    // Create 1000 groups to test performance at scale
+    for i in 1..=1000 {
+        create_test_group(
+            &test_env.env,
+            &test_env.autoshare_contract,
+            &creator,
+            &members,
+            i,
+            &token,
+        );
+    }
+
+    // Verify get_group_count executes successfully and returns correct count
+    let count = client.get_group_count();
+    assert_eq!(count, 1000);
+
+    // Verify consistency with paginated query
+    let page = client.get_groups_paginated(&0, &1);
+    assert_eq!(page.total, 1000);
+    assert_eq!(count, page.total);
+}
+
+#[test]
+fn test_get_group_count_after_deletion() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(crate::base::types::GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    // Create 5 groups
+    let id1 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+    let id2 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
+    let id3 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        3,
+        &token,
+    );
+    let id4 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        4,
+        &token,
+    );
+    let id5 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        5,
+        &token,
+    );
+
+    assert_eq!(client.get_group_count(), 5);
+
+    // Delete one group (must deactivate first)
+    client.deactivate_group(&id2, &creator);
+    client.delete_group(&id2, &creator);
+    assert_eq!(client.get_group_count(), 4);
+
+    // Delete another group
+    client.deactivate_group(&id4, &creator);
+    client.delete_group(&id4, &creator);
+    assert_eq!(client.get_group_count(), 3);
+
+    // Delete two more groups
+    client.deactivate_group(&id1, &creator);
+    client.delete_group(&id1, &creator);
+    client.deactivate_group(&id5, &creator);
+    client.delete_group(&id5, &creator);
+    assert_eq!(client.get_group_count(), 1);
+
+    // Verify consistency with paginated query
+    let page = client.get_groups_paginated(&0, &10);
+    assert_eq!(page.total, 1);
+    assert_eq!(client.get_group_count(), page.total);
+
+    // Delete the last group
+    client.deactivate_group(&id3, &creator);
+    client.delete_group(&id3, &creator);
+    assert_eq!(client.get_group_count(), 0);
+
+    // Verify empty state
+    let page_empty = client.get_groups_paginated(&0, &10);
+    assert_eq!(page_empty.total, 0);
+    assert_eq!(client.get_group_count(), page_empty.total);
+}
+
+#[test]
+fn test_get_group_count_multiple_deletion_scenarios() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(crate::base::types::GroupMember {
+        address: Address::generate(&test_env.env),
+        percentage: 100,
+    });
+
+    // Scenario 1: Delete from beginning
+    let id1 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 10, &token);
+    let id2 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 20, &token);
+    let id3 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 30, &token);
+    
+    assert_eq!(client.get_group_count(), 3);
+    client.deactivate_group(&id1, &creator);
+    client.delete_group(&id1, &creator);
+    assert_eq!(client.get_group_count(), 2);
+
+    // Scenario 2: Delete from middle
+    client.deactivate_group(&id2, &creator);
+    client.delete_group(&id2, &creator);
+    assert_eq!(client.get_group_count(), 1);
+
+    // Scenario 3: Delete from end
+    client.deactivate_group(&id3, &creator);
+    client.delete_group(&id3, &creator);
+    assert_eq!(client.get_group_count(), 0);
+}
