@@ -155,7 +155,7 @@ mod property_tests {
             if let Some(id) = group_ids.get(i as u32) {
                 // Deactivate the group first (required for deletion)
                 client.deactivate_group(&id, &creator);
-                
+
                 // Delete the group (allowed even with remaining usages)
                 client.delete_group(&id, &creator);
                 expected_count -= 1;

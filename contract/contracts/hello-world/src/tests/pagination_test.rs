@@ -359,10 +359,31 @@ fn test_get_group_count_multiple_deletion_scenarios() {
     });
 
     // Scenario 1: Delete from beginning
-    let id1 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 10, &token);
-    let id2 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 20, &token);
-    let id3 = create_test_group(&test_env.env, &test_env.autoshare_contract, &creator, &members, 30, &token);
-    
+    let id1 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        10,
+        &token,
+    );
+    let id2 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        20,
+        &token,
+    );
+    let id3 = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        30,
+        &token,
+    );
+
     assert_eq!(client.get_group_count(), 3);
     client.deactivate_group(&id1, &creator);
     client.delete_group(&id1, &creator);
