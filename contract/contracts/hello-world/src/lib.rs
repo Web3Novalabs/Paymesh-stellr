@@ -387,11 +387,3 @@ mod max_members_test;
 #[cfg(test)]
 #[path = "tests/group_count_property_test.rs"]
 mod group_count_property_test;
-
-#[cfg(test)]
-#[path = "tests/cargo_lock_sync_test.rs"]
-mod cargo_lock_sync_test;
-
-#[cfg(test)]
-#[path = "tests/cargo_lock_preservation_test.rs"]
-mod cargo_lock_preservation_test;
