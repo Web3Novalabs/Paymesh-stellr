@@ -425,3 +425,7 @@ mod max_members_test;
 #[cfg(test)]
 #[path = "tests/group_count_property_test.rs"]
 mod group_count_property_test;
+
+#[cfg(test)]
+#[path = "tests/token_management_test.rs"]
+mod token_management_test;
