@@ -187,6 +187,19 @@ pub fn get_all_groups(env: Env) -> Vec<AutoShareDetails> {
     result
 }
 
+pub fn get_active_groups(env: Env) -> Vec<AutoShareDetails> {
+    let group_ids = get_all_group_ids(&env);
+    let mut result: Vec<AutoShareDetails> = Vec::new(&env);
+    for id in group_ids.iter() {
+        if let Ok(details) = get_autoshare(env.clone(), id) {
+            if details.is_active {
+                result.push_back(details);
+            }
+        }
+    }
+    result
+}
+
 pub fn get_groups_by_creator(env: Env, creator: Address) -> Vec<AutoShareDetails> {
     let group_ids = get_all_group_ids(&env);
     let mut result: Vec<AutoShareDetails> = Vec::new(&env);

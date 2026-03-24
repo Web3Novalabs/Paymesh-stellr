@@ -87,6 +87,11 @@ impl AutoShareContract {
         autoshare_logic::get_all_groups(env)
     }
 
+    /// Retrieves only active AutoShare groups.
+    pub fn get_active_groups(env: Env) -> Vec<base::types::AutoShareDetails> {
+        autoshare_logic::get_active_groups(env)
+    }
+
     /// Retrieves all AutoShare groups created by a specific address.
     pub fn get_groups_by_creator(env: Env, creator: Address) -> Vec<base::types::AutoShareDetails> {
         autoshare_logic::get_groups_by_creator(env, creator)
@@ -429,3 +434,7 @@ mod group_count_property_test;
 #[cfg(test)]
 #[path = "tests/token_management_test.rs"]
 mod token_management_test;
+
+#[cfg(test)]
+#[path = "tests/get_active_groups_test.rs"]
+mod get_active_groups_test;
