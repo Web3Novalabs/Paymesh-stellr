@@ -112,3 +112,36 @@ fn test_distribute_fails_when_group_inactive() {
     mint_tokens(&env, &token, &sender, 500);
     client.distribute(&id, &token, &500, &sender);
 }
+
+#[test]
+fn test_get_group_total_distributed() {
+    let test_env = setup_test_env();
+    let env = test_env.env;
+    let contract = test_env.autoshare_contract;
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+    let client = AutoShareContractClient::new(&env, &contract);
+
+    let member = Address::generate(&env);
+    let mut members = Vec::new(&env);
+    members.push_back(GroupMember {
+        address: member.clone(),
+        percentage: 100,
+    });
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let id = create_test_group(&env, &contract, &creator, &members, 10u32, &token);
+
+    let sender = test_env.users.get(1).unwrap().clone();
+    mint_tokens(&env, &token, &sender, 5000);
+
+    // Initial total distributed should be 0
+    assert_eq!(client.get_group_total_distributed(&id), 0);
+
+    // First distribution
+    client.distribute(&id, &token, &1000, &sender);
+    assert_eq!(client.get_group_total_distributed(&id), 1000);
+
+    // Second distribution
+    client.distribute(&id, &token, &2000, &sender);
+    assert_eq!(client.get_group_total_distributed(&id), 3000);
+}

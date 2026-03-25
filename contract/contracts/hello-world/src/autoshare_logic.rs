@@ -909,6 +909,15 @@ pub fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionHist
         .unwrap_or(Vec::new(&env))
 }
 
+pub fn get_group_total_distributed(env: Env, id: BytesN<32>) -> i128 {
+    let history = get_group_distributions(env.clone(), id);
+    let mut total: i128 = 0;
+    for dist in history.iter() {
+        total += dist.total_amount;
+    }
+    total
+}
+
 pub fn get_member_distributions(env: Env, member: Address) -> Vec<DistributionRecord> {
     let member_history_key = DataKey::MemberDistributions(member);
     env.storage()

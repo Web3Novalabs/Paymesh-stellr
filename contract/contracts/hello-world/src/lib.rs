@@ -280,6 +280,11 @@ impl AutoShareContract {
         autoshare_logic::get_group_distributions(env, id)
     }
 
+    /// Returns the total amount distributed by a group across all tokens.
+    pub fn get_group_total_distributed(env: Env, id: BytesN<32>) -> i128 {
+        autoshare_logic::get_group_total_distributed(env, id)
+    }
+
     /// Returns all distribution history for a member.
     pub fn get_member_distributions(
         env: Env,
