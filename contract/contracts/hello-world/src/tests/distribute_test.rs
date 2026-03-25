@@ -65,8 +65,7 @@ fn test_distribute_splits_payment_and_decrements_usage() {
     assert_eq!(dist.sender, sender);
     assert_eq!(dist.total_amount, amount);
     assert_eq!(dist.token, token);
-    assert_eq!(dist.distribution_number, 0); // 1st distribution: total_usages_paid - usage_count = 2 - 2
-    assert_eq!(dist.member_amounts.len(), 3);
+    assert_eq!(dist.member_count, 3);
 
     // (New) Check that the emit_distribution event would be triggered (manual check: no direct event query API)
     // This is a placeholder to indicate the event is expected and should be visible in the event log.

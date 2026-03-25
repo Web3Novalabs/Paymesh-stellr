@@ -286,7 +286,7 @@ impl AutoShareContract {
     pub fn get_group_distributions(
         env: Env,
         id: BytesN<32>,
-    ) -> Vec<base::types::DistributionHistory> {
+    ) -> Vec<base::types::DistributionRecord> {
         autoshare_logic::get_group_distributions(env, id)
     }
 
@@ -294,7 +294,7 @@ impl AutoShareContract {
     pub fn get_member_distributions(
         env: Env,
         member: Address,
-    ) -> Vec<base::types::DistributionRecord> {
+    ) -> Vec<base::types::MemberDistributionRecord> {
         autoshare_logic::get_member_distributions(env, member)
     }
 
@@ -446,5 +446,8 @@ mod group_count_property_test;
 mod token_management_test;
 
 #[cfg(test)]
+#[path = "tests/topup_subscription_test.rs"]
+mod topup_subscription_test;
+
 #[path = "tests/get_active_groups_test.rs"]
 mod get_active_groups_test;
