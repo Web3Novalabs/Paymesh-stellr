@@ -436,5 +436,8 @@ mod group_count_property_test;
 mod token_management_test;
 
 #[cfg(test)]
+#[path = "tests/topup_subscription_test.rs"]
+mod topup_subscription_test;
+
 #[path = "tests/get_active_groups_test.rs"]
 mod get_active_groups_test;
