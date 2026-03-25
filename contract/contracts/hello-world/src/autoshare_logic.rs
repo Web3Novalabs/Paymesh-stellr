@@ -7,7 +7,8 @@ use crate::base::events::{
 
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
-    FundraisingContribution, GroupMember, GroupStats, MemberAmount, PaymentHistory,
+    FundraisingContribution, GroupMember, GroupStats, MemberAmount, MemberDistributionRecord,
+    PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -33,6 +34,7 @@ pub enum DataKey {
     GroupStats(BytesN<32>),
     IsPaused,
     MemberGroups(Address),
+    GroupDistributions(BytesN<32>),
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -880,15 +882,35 @@ fn record_distribution(
         .persistent()
         .set(&group_history_key, &group_history);
 
+    // Add to group's distribution history (Issue #107)
+    let group_dist_key = DataKey::GroupDistributions(group_id.clone());
+    let mut group_distributions: Vec<DistributionRecord> = env
+        .storage()
+        .persistent()
+        .get(&group_dist_key)
+        .unwrap_or(Vec::new(&env));
+    group_distributions.push_back(DistributionRecord {
+        group_id: group_id.clone(),
+        sender: sender.clone(),
+        token: token.clone(),
+        total_amount,
+        member_count: member_amounts.len(),
+        timestamp,
+    });
+    env.storage()
+        .persistent()
+        .set(&group_dist_key, &group_distributions);
+    bump_persistent(&env, &group_dist_key);
+
     // Add to each member's distribution history
     for member_amount in member_amounts.iter() {
         let member_history_key = DataKey::MemberDistributions(member_amount.address.clone());
-        let mut member_history: Vec<DistributionRecord> = env
+        let mut member_history: Vec<MemberDistributionRecord> = env
             .storage()
             .persistent()
             .get(&member_history_key)
             .unwrap_or(Vec::new(&env));
-        let record = DistributionRecord {
+        let record = MemberDistributionRecord {
             group_id: group_id.clone(),
             amount: member_amount.amount,
             token: token.clone(),
@@ -901,19 +923,19 @@ fn record_distribution(
     }
 }
 
-pub fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionHistory> {
-    let group_history_key = DataKey::GroupDistributionHistory(id);
+pub fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionRecord> {
+    let group_dist_key = DataKey::GroupDistributions(id);
     env.storage()
         .persistent()
-        .get(&group_history_key)
+        .get(&group_dist_key)
         .unwrap_or(Vec::new(&env))
 }
 
-pub fn get_member_distributions(env: Env, member: Address) -> Vec<DistributionRecord> {
-    let member_history_key = DataKey::MemberDistributions(member);
+pub fn get_member_distributions(env: Env, member: Address) -> Vec<MemberDistributionRecord> {
+    let member_dist_key = DataKey::MemberDistributions(member);
     env.storage()
         .persistent()
-        .get(&member_history_key)
+        .get(&member_dist_key)
         .unwrap_or(Vec::new(&env))
 }
 

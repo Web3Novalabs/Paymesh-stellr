@@ -154,7 +154,7 @@ fn test_get_supported_tokens_insertion_order() {
 // ─── 7. Non-admin cannot add or remove tokens ─────────────────────────────────
 
 #[test]
-#[should_panic(expected = "NotAuthorized")]
+#[should_panic(expected = "Unauthorized")]
 fn test_non_admin_cannot_add_token() {
     let env = Env::default();
     env.mock_all_auths();
@@ -167,7 +167,7 @@ fn test_non_admin_cannot_add_token() {
 }
 
 #[test]
-#[should_panic(expected = "NotAuthorized")]
+#[should_panic(expected = "Unauthorized")]
 fn test_non_admin_cannot_remove_token() {
     let env = Env::default();
     env.mock_all_auths();

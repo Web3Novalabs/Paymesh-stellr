@@ -50,10 +50,21 @@ pub struct DistributionHistory {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DistributionRecord {
+pub struct MemberDistributionRecord {
     pub group_id: BytesN<32>,
     pub amount: i128,
     pub token: Address,
+    pub timestamp: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DistributionRecord {
+    pub group_id: BytesN<32>,
+    pub sender: Address,
+    pub token: Address,
+    pub total_amount: i128,
+    pub member_count: u32,
     pub timestamp: u64,
 }
 
