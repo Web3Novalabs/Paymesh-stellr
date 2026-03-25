@@ -65,7 +65,10 @@ fn test_get_active_groups_filters_inactive() {
     assert_eq!(active.len(), 2);
 
     // Verify the returned groups are id1 and id3
-    let ids: soroban_sdk::Vec<BytesN<32>> = active.iter().map(|g| g.id).collect();
+    let mut ids = soroban_sdk::Vec::new(&env);
+    for g in active.iter() {
+        ids.push_back(g.id);
+    }
     assert!(ids.contains(&id1));
     assert!(!ids.contains(&id2));
     assert!(ids.contains(&id3));

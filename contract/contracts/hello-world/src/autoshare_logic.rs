@@ -7,7 +7,7 @@ use crate::base::events::{
 
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
-    FundraisingContribution, GroupMember, GroupStats, MemberAmount, PaymentHistory,
+    FundraisingContribution, GroupMember, GroupPage, GroupStats, MemberAmount, PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -1862,5 +1862,46 @@ pub fn get_fundraising_remaining(env: Env, id: BytesN<32>) -> i128 {
         }
     } else {
         0
+    }
+}
+
+pub fn get_groups_by_member_paginated(
+    env: Env,
+    member: Address,
+    offset: u32,
+    limit: u32,
+) -> GroupPage {
+    let member_groups_key = DataKey::MemberGroups(member);
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&member_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = group_ids.len();
+    let actual_limit = if limit > 20 { 20 } else { limit };
+
+    let mut groups = Vec::new(&env);
+    if offset < total {
+        let end = if offset + actual_limit > total {
+            total
+        } else {
+            offset + actual_limit
+        };
+
+        for i in offset..end {
+            if let Some(id) = group_ids.get(i) {
+                if let Ok(details) = get_autoshare(env.clone(), id.clone()) {
+                    groups.push_back(details);
+                }
+            }
+        }
+    }
+
+    GroupPage {
+        groups,
+        total,
+        offset,
+        limit: actual_limit,
     }
 }

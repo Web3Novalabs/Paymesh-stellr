@@ -102,6 +102,16 @@ impl AutoShareContract {
         autoshare_logic::get_groups_by_member(env, member)
     }
 
+    /// Returns a paginated list of groups where the given address is a member.
+    pub fn get_groups_by_member_paginated(
+        env: Env,
+        member: Address,
+        offset: u32,
+        limit: u32,
+    ) -> base::types::GroupPage {
+        autoshare_logic::get_groups_by_member_paginated(env, member, offset, limit)
+    }
+
     /// Returns a paginated list of groups.
     pub fn get_groups_paginated(env: Env, start_index: u32, limit: u32) -> base::types::GroupPage {
         autoshare_logic::get_groups_paginated(env, start_index, limit)

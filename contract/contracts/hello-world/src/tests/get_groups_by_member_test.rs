@@ -78,3 +78,45 @@ fn test_get_groups_by_member() {
     let admin_groups_after_delete = client.get_groups_by_member(&admin);
     assert_eq!(admin_groups_after_delete.len(), 0);
 }
+
+#[test]
+fn test_get_groups_by_member_paginated() {
+    let test_env = setup_test_env();
+    let env = &test_env.env;
+    let client = AutoShareContractClient::new(env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let member = test_env.users.get(1).unwrap().clone();
+    let token_id = test_env.mock_tokens.get(0).unwrap().clone();
+
+    crate::test_utils::fund_user_with_tokens(env, &token_id, &creator, 100000);
+
+    // Create 5 groups and add member to all of them
+    for i in 0u8..5 {
+        let id = BytesN::from_array(env, &[i + 10; 32]);
+        let name = String::from_str(env, "Group");
+        client.create(&id, &name, &creator, &10u32, &token_id);
+        client.add_group_member(&id, &creator, &member, &100);
+    }
+
+    // Page 1: offset 0, limit 2
+    let page1 = client.get_groups_by_member_paginated(&member, &0, &2);
+    assert_eq!(page1.groups.len(), 2);
+    assert_eq!(page1.total, 5);
+    assert_eq!(page1.offset, 0);
+    assert_eq!(page1.limit, 2);
+
+    // Page 2: offset 2, limit 2
+    let page2 = client.get_groups_by_member_paginated(&member, &2, &2);
+    assert_eq!(page2.groups.len(), 2);
+    assert_eq!(page2.total, 5);
+
+    // Page 3: offset 4, limit 2
+    let page3 = client.get_groups_by_member_paginated(&member, &4, &2);
+    assert_eq!(page3.groups.len(), 1);
+    assert_eq!(page3.total, 5);
+
+    // Limit exceeding 20
+    let page_max = client.get_groups_by_member_paginated(&member, &0, &50);
+    assert_eq!(page_max.limit, 20);
+}
