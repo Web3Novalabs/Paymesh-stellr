@@ -41,6 +41,7 @@ const DAY_IN_LEDGERS: u32 = 17280;
 const PERSISTENT_BUMP_THRESHOLD: u32 = 7 * DAY_IN_LEDGERS; // 1 week
 const PERSISTENT_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS; // 30 days
 const MAX_MEMBERS: u32 = 50; // Maximum number of members per group to prevent DoS
+const CONTRACT_VERSION: u32 = 1;
 
 fn bump_persistent<K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, key: &K) {
     if env.storage().persistent().has(key) {
@@ -602,6 +603,10 @@ pub fn get_paused_status(env: &Env) -> bool {
         bump_persistent(env, &pause_key);
     }
     is_paused
+}
+
+pub fn get_contract_version(_env: Env) -> u32 {
+    CONTRACT_VERSION
 }
 
 // ============================================================================

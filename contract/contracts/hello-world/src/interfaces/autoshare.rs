@@ -29,6 +29,9 @@ pub trait AutoShareTrait {
     /// Returns the current admin address.
     fn get_admin(env: Env) -> Address;
 
+    /// Returns the current contract version.
+    fn get_contract_version(env: Env) -> u32;
+
     /// Transfers admin rights to a new address. Only current admin can call.
     fn transfer_admin(env: Env, current_admin: Address, new_admin: Address);
 

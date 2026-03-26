@@ -47,6 +47,11 @@ impl AutoShareContract {
         autoshare_logic::get_paused_status(&env)
     }
 
+    /// Returns the current contract version.
+    pub fn get_contract_version(env: Env) -> u32 {
+        autoshare_logic::get_contract_version(env)
+    }
+
     // ============================================================================
     // AutoShare Group Management
     // ============================================================================
