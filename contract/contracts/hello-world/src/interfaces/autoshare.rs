@@ -71,6 +71,14 @@ pub trait AutoShareTrait {
     /// Returns the total number of groups.
     fn get_group_count(env: Env) -> u32;
 
+    /// Returns groups by active/inactive status.
+    fn get_groups_by_status_paginated(
+        env: Env,
+        is_active: bool,
+        offset: u32,
+        limit: u32,
+    ) -> crate::base::types::GroupPage;
+
     /// Checks if an address is a member of a specific group.
     fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> bool;
 

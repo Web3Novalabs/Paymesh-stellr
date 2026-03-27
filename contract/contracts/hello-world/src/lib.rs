@@ -137,6 +137,16 @@ impl AutoShareContract {
         autoshare_logic::get_group_count(env)
     }
 
+    /// Returns groups by active/inactive status.
+    pub fn get_groups_by_status_paginated(
+        env: Env,
+        is_active: bool,
+        offset: u32,
+        limit: u32,
+    ) -> crate::base::types::GroupPage {
+        autoshare_logic::get_groups_by_status_paginated(env, is_active, offset, limit)
+    }
+
     /// Checks if an address is a member of a specific group.
     pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> bool {
         autoshare_logic::is_group_member(env, id, address).unwrap()

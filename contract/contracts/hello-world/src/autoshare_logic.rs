@@ -8,7 +8,7 @@ use crate::base::events::{
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
     FundraisingContribution, GroupMember, GroupStats, MemberAmount, MemberDistributionRecord,
-    PaymentHistory,
+    PaymentHistory, GroupPage
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -1936,6 +1936,49 @@ pub fn get_groups_by_member_paginated(
     GroupPage {
         groups,
         total,
+        offset,
+        limit: actual_limit,
+    }
+}
+
+pub fn get_groups_by_status_paginated(
+    env: Env,
+    is_active: bool,
+    offset: u32,
+    limit: u32,
+) -> GroupPage {
+    let group_ids = get_all_group_ids(&env);
+
+    // Cap limit at 20 as per requirement
+    let actual_limit = limit.min(20);
+    if actual_limit == 0 {
+        return GroupPage {
+            groups: Vec::new(&env),
+            total: 0,
+            offset,
+            limit: actual_limit,
+        };
+    }
+
+    let mut groups: Vec<AutoShareDetails> = Vec::new(&env);
+    let mut total_matches = 0;
+    let mut matches_returned = 0;
+
+    for id in group_ids.iter() {
+        if let Ok(details) = get_autoshare(env.clone(), id) {
+            if details.is_active == is_active {
+                if total_matches >= offset && matches_returned < actual_limit {
+                    groups.push_back(details);
+                    matches_returned += 1;
+                }
+                total_matches += 1;
+            }
+        }
+    }
+
+    GroupPage {
+        groups,
+        total: total_matches,
         offset,
         limit: actual_limit,
     }
