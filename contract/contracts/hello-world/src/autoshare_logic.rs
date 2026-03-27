@@ -1,6 +1,6 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_distribution, AdminTransferred, AutoshareCreated, AutoshareUpdated,
+    emit_contribution, emit_distribution, emit_fundraising_reset, AdminTransferred, AutoshareCreated, AutoshareUpdated,
     ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated,
     GroupDeleted, GroupNameUpdated, Withdrawal, GroupOwnershipTransferred,
 };
@@ -1434,6 +1434,103 @@ pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Err
     Ok(())
 }
 
+pub fn admin_delete_group(env: Env, admin: Address, id: BytesN<32>) -> Result<(), Error> {
+    // 1. Require admin auth
+    admin.require_auth();
+
+    // 2. Verify caller is the contract admin
+    require_admin(&env, &admin)?;
+
+    // 3. Read AutoShare(id), returning Error::NotFound if missing
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    // 4. if a fundraising campaign is active, sets it to inactive first
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    if let Some(mut config) = env
+        .storage()
+        .persistent()
+        .get::<_, FundraisingConfig>(&fundraising_key)
+    {
+        if config.is_active {
+            config.is_active = false;
+            env.storage().persistent().set(&fundraising_key, &config);
+            bump_persistent(&env, &fundraising_key);
+        }
+    }
+
+    // 5. Removes the group from AllGroups vector
+    let all_groups_key = DataKey::AllGroups;
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&all_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    let mut new_group_ids: Vec<BytesN<32>> = Vec::new(&env);
+    let mut group_found = false;
+    for group_id in group_ids.iter() {
+        if group_id != id {
+            new_group_ids.push_back(group_id);
+        } else {
+            group_found = true;
+        }
+    }
+
+    if group_found {
+        env.storage()
+            .persistent()
+            .set(&all_groups_key, &new_group_ids);
+        bump_persistent(&env, &all_groups_key);
+    }
+
+    // 6. removes the group from all members' MemberGroups
+    for member in details.members.iter() {
+        let member_groups_key = DataKey::MemberGroups(member.address.clone());
+        if let Some(member_groups) = env
+            .storage()
+            .persistent()
+            .get::<_, Vec<BytesN<32>>>(&member_groups_key)
+        {
+            let mut updated_member_groups: Vec<BytesN<32>> = Vec::new(&env);
+            let mut found = false;
+            for group_id in member_groups.iter() {
+                if group_id != id {
+                    updated_member_groups.push_back(group_id);
+                } else {
+                    found = true;
+                }
+            }
+            if found {
+                env.storage()
+                    .persistent()
+                    .set(&member_groups_key, &updated_member_groups);
+                bump_persistent(&env, &member_groups_key);
+            }
+        }
+    }
+
+    // 7. deletes AutoShare(id) from storage
+    env.storage().persistent().remove(&key);
+
+    // 8. preserves all payment history and distribution records
+    // (Explicitly not deleting UserPaymentHistory, GroupPaymentHistory, GroupDistributions keys)
+
+    // 9. emits GroupDeleted event
+    GroupDeleted {
+        deleter: admin,
+        id: id.clone(),
+    }
+    .publish(&env);
+
+    Ok(())
+}
+
 // ============================================================================
 // Contract Balance & Withdrawal
 // ============================================================================
@@ -1960,6 +2057,61 @@ pub fn get_fundraising_remaining(env: Env, id: BytesN<32>) -> i128 {
     } else {
         0
     }
+}
+
+pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    // 1. Authorize caller
+    caller.require_auth();
+
+    // 2. Check if contract is paused
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // 3. Verify group existence and creator
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    // 4. Check fundraising exists and is NOT active
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    let config: FundraisingConfig = env
+        .storage()
+        .persistent()
+        .get(&fundraising_key)
+        .ok_or(Error::FundraisingNotActive)?;
+    bump_persistent(&env, &fundraising_key);
+
+    if config.is_active {
+        return Err(Error::FundraisingAlreadyActive);
+    }
+
+    // 5. Remove current fundraising configuration
+    env.storage().persistent().remove(&fundraising_key);
+
+    // 6. Clear contributions and stats for a fresh start
+    let contributions_key = DataKey::GroupContributions(id.clone());
+    if env.storage().persistent().has(&contributions_key) {
+        env.storage().persistent().remove(&contributions_key);
+    }
+
+    let stats_key = DataKey::GroupStats(id.clone());
+    if env.storage().persistent().has(&stats_key) {
+        env.storage().persistent().remove(&stats_key);
+    }
+
+    // 7. Emit reset event
+    emit_fundraising_reset(&env, id);
+
+    Ok(())
 }
 
 pub fn get_groups_by_member_paginated(

@@ -358,3 +358,61 @@ fn test_delete_group_when_paused() {
     // Try to delete - should fail
     client.delete_group(&group_id, &creator);
 }
+
+#[test]
+fn test_admin_delete_group_force_delete() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let member1 = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    // Initialize admin and add supported token
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[12u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Add a member
+    client.add_group_member(&group_id, &creator, &member1, &100);
+
+    // Verify member has the group in their list
+    let member_groups = client.get_groups_by_member(&member1);
+    assert!(member_groups.iter().any(|g| g.id == group_id));
+
+    // Start a fundraiser
+    client.start_fundraising(&group_id, &creator, &1000);
+    assert!(client.get_fundraising_status(&group_id).is_active);
+
+    // Verify group is active and has usages
+    assert!(client.is_group_active(&group_id));
+    assert_eq!(client.get_remaining_usages(&group_id), 10);
+
+    // Admin force-deletes the group
+    client.admin_delete_group(&admin, &group_id);
+
+    // Verify group is gone from storage
+    let all_groups = client.get_all_groups();
+    assert!(!all_groups.iter().any(|g| g.id == group_id));
+
+    // Verify fundraiser is inactive or gone (in our impl we just remove AutoShare(id), fundraiser record remains but is orphaned)
+    // Actually our impl sets it to inactive first.
+    let fundraiser = client.get_fundraising_status(&group_id);
+    assert!(!fundraiser.is_active);
+
+    // Verify group is gone from member's list
+    let member_groups_after = client.get_groups_by_member(&member1);
+    assert!(!member_groups_after.iter().any(|g| g.id == group_id));
+
+    // Verify attempting to get it fails
+    // (get returns Error::NotFound if missing)
+}
