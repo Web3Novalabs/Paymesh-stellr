@@ -190,4 +190,10 @@ pub trait AutoShareTrait {
 
     /// Contributes funds to a fundraising campaign.
     fn contribute(env: Env, id: BytesN<32>, token: Address, amount: i128, contributor: Address);
+
+    /// Sets the minimum contribution amount for fundraising (admin only). 0 = no minimum.
+    fn set_min_contribution(env: Env, admin: Address, min_amount: i128);
+
+    /// Returns the current minimum contribution amount.
+    fn get_min_contribution(env: Env) -> i128;
 }

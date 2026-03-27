@@ -36,6 +36,7 @@ pub enum DataKey {
     IsPaused,
     MemberGroups(Address),
     GroupDistributions(BytesN<32>),
+    MinContribution,
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -722,6 +723,27 @@ pub fn get_usage_fee(env: Env) -> u32 {
         bump_persistent(&env, &fee_key);
     }
     result.unwrap_or(10u32)
+}
+
+pub fn set_min_contribution(env: Env, admin: Address, min_amount: i128) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+    if min_amount < 0 {
+        return Err(Error::InvalidAmount);
+    }
+    let key = DataKey::MinContribution;
+    env.storage().persistent().set(&key, &min_amount);
+    bump_persistent(&env, &key);
+    Ok(())
+}
+
+pub fn get_min_contribution(env: Env) -> i128 {
+    let key = DataKey::MinContribution;
+    let result: Option<i128> = env.storage().persistent().get(&key);
+    if result.is_some() {
+        bump_persistent(&env, &key);
+    }
+    result.unwrap_or(0i128)
 }
 
 // ============================================================================
@@ -1790,6 +1812,11 @@ pub fn contribute(
 
     if amount <= 0 {
         return Err(Error::InvalidAmount);
+    }
+
+    let min_contribution = get_min_contribution(env.clone());
+    if min_contribution > 0 && amount < min_contribution {
+        return Err(Error::BelowMinimumContribution);
     }
 
     if !is_token_supported(env.clone(), token.clone()) {

@@ -31,4 +31,5 @@ pub enum Error {
     MaxMembersExceeded = 25,
     FundraisingAlreadyActive = 32,
     FundraisingNotActive = 33,
+    BelowMinimumContribution = 34,
 }

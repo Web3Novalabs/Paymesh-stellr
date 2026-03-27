@@ -398,6 +398,16 @@ impl AutoShareContract {
     pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::reset_fundraising(env, id, caller).unwrap();
     }
+
+    /// Sets the minimum contribution amount for fundraising (admin only). 0 = no minimum.
+    pub fn set_min_contribution(env: Env, admin: Address, min_amount: i128) {
+        autoshare_logic::set_min_contribution(env, admin, min_amount).unwrap();
+    }
+
+    /// Returns the current minimum contribution amount.
+    pub fn get_min_contribution(env: Env) -> i128 {
+        autoshare_logic::get_min_contribution(env)
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
