@@ -1,15 +1,15 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_distribution, emit_fundraising_reset, AdminTransferred,
-    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
-    GroupNameUpdated, Withdrawal, emit_creator_is_member,
+    emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_reset,
+    AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
+    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated,
+    GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
-    FundraisingContribution, GroupMember, GroupStats, MemberAmount, MemberDistributionRecord,
-    PaymentHistory, GroupPage
+    FundraisingContribution, GroupMember, GroupPage, GroupStats, MemberAmount,
+    MemberDistributionRecord, PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
