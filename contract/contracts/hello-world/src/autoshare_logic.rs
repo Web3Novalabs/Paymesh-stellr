@@ -1,6 +1,6 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_distribution, emit_fundraising_reset,
+    emit_contribution, emit_distribution,
     emit_fundraising_target_updated, emit_max_members_updated, AdminTransferred,
     AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
     FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
