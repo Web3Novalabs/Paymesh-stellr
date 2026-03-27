@@ -983,8 +983,6 @@ pub fn get_total_usages_paid(env: Env, id: BytesN<32>) -> Result<u32, Error> {
     Ok(details.total_usages_paid)
 }
 
-#[cfg(test)]
-#[allow(dead_code)]
 pub fn reduce_usage(env: Env, id: BytesN<32>) -> Result<(), Error> {
     let key = DataKey::AutoShare(id);
     let mut details: AutoShareDetails = env
@@ -1731,7 +1729,28 @@ pub fn contribute(
     token_client.transfer(&contributor, env.current_contract_address(), &amount);
 
     // Distribute funds to group members
-    perform_distribution(&env, &id, &token, amount, &group_details.members);
+    let member_amounts = perform_distribution(&env, &id, &token, amount, &group_details.members);
+
+    // Record the distribution for transparency (Requirement 6)
+    record_distribution(
+        env.clone(),
+        id.clone(),
+        contributor.clone(),
+        amount,
+        token.clone(),
+        member_amounts.clone(),
+        0, // Fundraising distributions don't have a usage number
+    );
+
+    // Emit distribution event
+    emit_distribution(
+        &env,
+        &id,
+        &contributor,
+        &token,
+        amount,
+        member_amounts.len() as u32,
+    );
 
     // Update fundraising total
     fundraising_config.total_raised += amount;

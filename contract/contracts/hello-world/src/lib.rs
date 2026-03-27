@@ -474,3 +474,7 @@ mod event_emission_test;
 #[cfg(test)]
 #[path = "tests/delete_group_test.rs"]
 mod delete_group_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_distribution_interaction_test.rs"]
+mod fundraising_distribution_interaction_test;
