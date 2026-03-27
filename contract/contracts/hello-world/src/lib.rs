@@ -405,12 +405,7 @@ impl AutoShareContract {
     }
 
     /// Updates the target amount for a fundraising campaign.
-    pub fn set_fundraising_target(
-        env: Env,
-        id: BytesN<32>,
-        caller: Address,
-        new_target: i128,
-    ) {
+    pub fn set_fundraising_target(env: Env, id: BytesN<32>, caller: Address, new_target: i128) {
         autoshare_logic::set_fundraising_target(env, id, caller, new_target).unwrap();
     }
 }

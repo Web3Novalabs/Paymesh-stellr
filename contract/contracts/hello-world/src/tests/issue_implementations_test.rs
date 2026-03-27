@@ -1,7 +1,6 @@
 use crate::test_utils::setup_test_env;
 use crate::AutoShareContractClient;
-use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, BytesN, Vec};
+use soroban_sdk::{BytesN, Vec};
 
 #[test]
 fn test_set_fundraising_target_success() {
