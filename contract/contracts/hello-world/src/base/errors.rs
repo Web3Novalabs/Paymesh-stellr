@@ -32,4 +32,5 @@ pub enum Error {
     InvalidTarget = 26,
     FundraisingAlreadyActive = 32,
     FundraisingNotActive = 33,
+    BelowMinimumContribution = 34,
 }
