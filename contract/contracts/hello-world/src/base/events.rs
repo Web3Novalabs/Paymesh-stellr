@@ -92,6 +92,17 @@ pub struct AdminTransferred {
     pub new_admin: Address,
 }
 
+#[contractevent]
+#[derive(Clone)]
+pub struct GroupOwnershipTransferred {
+    #[topic]
+    pub group_id: BytesN<32>,
+    #[topic]
+    pub old_creator: Address,
+    #[topic]
+    pub new_creator: Address,
+}
+
 #[contractevent(data_format = "single-value")]
 #[derive(Clone)]
 pub struct Withdrawal {

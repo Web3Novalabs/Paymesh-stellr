@@ -158,6 +158,17 @@ impl AutoShareContract {
         autoshare_logic::add_group_member(env, id, caller, address, percentage).unwrap();
     }
 
+    /// Adds multiple members to a group in a single call.
+    /// All existing + new percentages must sum to 100. Only the group creator (caller) may call.
+    pub fn batch_add_members(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_members: Vec<base::types::GroupMember>,
+    ) {
+        autoshare_logic::batch_add_members(env, id, caller, new_members).unwrap();
+    }
+
     /// Removes a single member from a group. Only the creator can call; group must be active.
     /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
     pub fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address) {
@@ -177,6 +188,16 @@ impl AutoShareContract {
     /// Updates the name of a group. Only the creator can update.
     pub fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String) {
         autoshare_logic::update_group_name(env, id, caller, new_name).unwrap();
+    }
+
+    /// Transfers group ownership (creator role) to a new address.
+    pub fn transfer_group_ownership(
+        env: Env,
+        id: BytesN<32>,
+        current_creator: Address,
+        new_creator: Address,
+    ) {
+        autoshare_logic::transfer_group_ownership(env, id, current_creator, new_creator).unwrap();
     }
 
     /// Returns whether a group is active.
@@ -398,6 +419,16 @@ impl AutoShareContract {
     pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::reset_fundraising(env, id, caller).unwrap();
     }
+
+    /// Sets the minimum contribution amount for fundraising (admin only). 0 = no minimum.
+    pub fn set_min_contribution(env: Env, admin: Address, min_amount: i128) {
+        autoshare_logic::set_min_contribution(env, admin, min_amount).unwrap();
+    }
+
+    /// Returns the current minimum contribution amount.
+    pub fn get_min_contribution(env: Env) -> i128 {
+        autoshare_logic::get_min_contribution(env)
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -490,5 +521,13 @@ mod delete_group_test;
 mod fundraising_distribution_interaction_test;
 
 #[cfg(test)]
+#[path = "tests/transfer_group_ownership_test.rs"]
+mod transfer_group_ownership_test;
+
+#[cfg(test)]
 #[path = "tests/fundraising_reset_test.rs"]
 mod fundraising_reset_test;
+
+#[cfg(test)]
+#[path = "tests/group_name_validation_test.rs"]
+mod group_name_validation_test;

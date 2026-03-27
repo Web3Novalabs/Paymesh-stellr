@@ -2,7 +2,8 @@ use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_distribution, emit_fundraising_reset, AdminTransferred,
     AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
-    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, Withdrawal,
+    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred,
+    Withdrawal,
 };
 
 use crate::base::types::{
@@ -35,6 +36,7 @@ pub enum DataKey {
     IsPaused,
     MemberGroups(Address),
     GroupDistributions(BytesN<32>),
+    MinContribution,
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -416,6 +418,105 @@ pub fn add_group_member(
     Ok(())
 }
 
+pub fn batch_add_members(
+    env: Env,
+    id: BytesN<32>,
+    caller: Address,
+    new_members: Vec<GroupMember>,
+) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    if new_members.is_empty() {
+        return Err(Error::EmptyMembers);
+    }
+
+    // Check combined count won't exceed MAX_MEMBERS
+    if details.members.len() + new_members.len() > MAX_MEMBERS {
+        return Err(Error::MaxMembersExceeded);
+    }
+
+    // Validate no duplicates within new_members and against existing members
+    let mut seen: Vec<Address> = Vec::new(&env);
+    for new_member in new_members.iter() {
+        // Check against existing members
+        for existing in details.members.iter() {
+            if existing.address == new_member.address {
+                return Err(Error::DuplicateMember);
+            }
+        }
+        // Check within new_members
+        for s in seen.iter() {
+            if s == new_member.address {
+                return Err(Error::DuplicateMember);
+            }
+        }
+        seen.push_back(new_member.address.clone());
+    }
+
+    // Validate that existing percentages + new member percentages sum to exactly 100
+    let mut total: u32 = 0;
+    for m in details.members.iter() {
+        total += m.percentage;
+    }
+    for m in new_members.iter() {
+        if m.percentage == 0 {
+            return Err(Error::InvalidInput);
+        }
+        total += m.percentage;
+    }
+    if total != 100 {
+        return Err(Error::InvalidTotalPercentage);
+    }
+
+    // Append all new members and update MemberGroups index
+    for new_member in new_members.iter() {
+        details.members.push_back(new_member.clone());
+
+        let member_groups_key = DataKey::MemberGroups(new_member.address.clone());
+        let mut member_groups: Vec<BytesN<32>> = env
+            .storage()
+            .persistent()
+            .get(&member_groups_key)
+            .unwrap_or(Vec::new(&env));
+        member_groups.push_back(id.clone());
+        env.storage()
+            .persistent()
+            .set(&member_groups_key, &member_groups);
+        bump_persistent(&env, &member_groups_key);
+    }
+
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    AutoshareUpdated {
+        id: id.clone(),
+        updater: caller,
+    }
+    .publish(&env);
+
+    Ok(())
+}
+
 pub fn remove_group_member(
     env: Env,
     id: BytesN<32>,
@@ -721,6 +822,27 @@ pub fn get_usage_fee(env: Env) -> u32 {
         bump_persistent(&env, &fee_key);
     }
     result.unwrap_or(10u32)
+}
+
+pub fn set_min_contribution(env: Env, admin: Address, min_amount: i128) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+    if min_amount < 0 {
+        return Err(Error::InvalidAmount);
+    }
+    let key = DataKey::MinContribution;
+    env.storage().persistent().set(&key, &min_amount);
+    bump_persistent(&env, &key);
+    Ok(())
+}
+
+pub fn get_min_contribution(env: Env) -> i128 {
+    let key = DataKey::MinContribution;
+    let result: Option<i128> = env.storage().persistent().get(&key);
+    if result.is_some() {
+        bump_persistent(&env, &key);
+    }
+    result.unwrap_or(0i128)
 }
 
 // ============================================================================
@@ -1251,6 +1373,51 @@ pub fn update_group_name(
         updater: caller,
     }
     .publish(&env);
+    Ok(())
+}
+
+pub fn transfer_group_ownership(
+    env: Env,
+    id: BytesN<32>,
+    current_creator: Address,
+    new_creator: Address,
+) -> Result<(), Error> {
+    // 1. Authorize current creator
+    current_creator.require_auth();
+
+    // 2. Check if contract is paused
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // 3. Verify group existence and creator
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    // bump persistent on read
+    bump_persistent(&env, &key);
+
+    if details.creator != current_creator {
+        return Err(Error::Unauthorized);
+    }
+
+    // 4. Update group creator
+    let old_creator = details.creator.clone();
+    details.creator = new_creator.clone();
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    // 5. Emit transfer event
+    GroupOwnershipTransferred {
+        group_id: id,
+        old_creator,
+        new_creator,
+    }
+    .publish(&env);
+
     Ok(())
 }
 
@@ -1789,6 +1956,11 @@ pub fn contribute(
 
     if amount <= 0 {
         return Err(Error::InvalidAmount);
+    }
+
+    let min_contribution = get_min_contribution(env.clone());
+    if min_contribution > 0 && amount < min_contribution {
+        return Err(Error::BelowMinimumContribution);
     }
 
     if !is_token_supported(env.clone(), token.clone()) {
