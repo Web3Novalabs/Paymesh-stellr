@@ -35,10 +35,7 @@ fn test_admin_withdraw_partial_balance() {
     client.withdraw(&test_env.admin, &token, &400, &recipient);
 
     assert_eq!(balance_of(env, &token, &recipient), 400);
-    assert_eq!(
-        client.get_contract_balance(&token),
-        600
-    );
+    assert_eq!(client.get_contract_balance(&token), 600);
 }
 
 // ── 2. Admin can withdraw the full balance ────────────────────────────────────
