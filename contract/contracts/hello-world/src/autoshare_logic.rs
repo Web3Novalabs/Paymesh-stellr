@@ -1307,15 +1307,17 @@ pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Err
         return Err(Error::GroupNotDeactivated);
     }
 
-    // Step 4: Check group has 0 remaining usages (or warn about forfeiture)
-    // We allow deletion even with remaining usages, but this is a design choice
-    // In production, you might want to enforce zero usages or handle refunds
-    if details.usage_count > 0 {
-        // Option 1: Strict enforcement - uncomment to require zero usages
-        // return Err(Error::GroupHasRemainingUsages);
+    // Step 4: Check if group has active fundraising
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    if let Some(fundraising) = env.storage().persistent().get::<_, FundraisingConfig>(&fundraising_key) {
+        if fundraising.is_active {
+            return Err(Error::GroupHasActiveFundraising);
+        }
+    }
 
-        // Option 2: Allow deletion with forfeiture (current implementation)
-        // The remaining usages are simply forfeited
+    // Step 5: Check group has 0 remaining usages
+    if details.usage_count > 0 {
+        return Err(Error::GroupHasRemainingUsages);
     }
 
     // Step 5: Remove the group from AllGroups list

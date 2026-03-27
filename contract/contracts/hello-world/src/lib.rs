@@ -398,6 +398,11 @@ impl AutoShareContract {
     pub fn get_fundraising_remaining(env: Env, id: BytesN<32>) -> i128 {
         autoshare_logic::get_fundraising_remaining(env, id)
     }
+
+    #[cfg(test)]
+    pub fn reduce_usage(env: Env, id: BytesN<32>) {
+        autoshare_logic::reduce_usage(env, id).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)

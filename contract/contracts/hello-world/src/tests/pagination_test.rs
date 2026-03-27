@@ -313,18 +313,30 @@ fn test_get_group_count_after_deletion() {
 
     // Delete one group (must deactivate first)
     client.deactivate_group(&id2, &creator);
+    for _ in 0..2 {
+        client.reduce_usage(&id2);
+    }
     client.delete_group(&id2, &creator);
     assert_eq!(client.get_group_count(), 4);
 
     // Delete another group
     client.deactivate_group(&id4, &creator);
+    for _ in 0..4 {
+        client.reduce_usage(&id4);
+    }
     client.delete_group(&id4, &creator);
     assert_eq!(client.get_group_count(), 3);
 
     // Delete two more groups
     client.deactivate_group(&id1, &creator);
+    for _ in 0..1 {
+        client.reduce_usage(&id1);
+    }
     client.delete_group(&id1, &creator);
     client.deactivate_group(&id5, &creator);
+    for _ in 0..5 {
+        client.reduce_usage(&id5);
+    }
     client.delete_group(&id5, &creator);
     assert_eq!(client.get_group_count(), 1);
 
@@ -335,6 +347,9 @@ fn test_get_group_count_after_deletion() {
 
     // Delete the last group
     client.deactivate_group(&id3, &creator);
+    for _ in 0..3 {
+        client.reduce_usage(&id3);
+    }
     client.delete_group(&id3, &creator);
     assert_eq!(client.get_group_count(), 0);
 
@@ -386,16 +401,25 @@ fn test_get_group_count_multiple_deletion_scenarios() {
 
     assert_eq!(client.get_group_count(), 3);
     client.deactivate_group(&id1, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&id1);
+    }
     client.delete_group(&id1, &creator);
     assert_eq!(client.get_group_count(), 2);
 
     // Scenario 2: Delete from middle
     client.deactivate_group(&id2, &creator);
+    for _ in 0..20 {
+        client.reduce_usage(&id2);
+    }
     client.delete_group(&id2, &creator);
     assert_eq!(client.get_group_count(), 1);
 
     // Scenario 3: Delete from end
     client.deactivate_group(&id3, &creator);
+    for _ in 0..30 {
+        client.reduce_usage(&id3);
+    }
     client.delete_group(&id3, &creator);
     assert_eq!(client.get_group_count(), 0);
 }

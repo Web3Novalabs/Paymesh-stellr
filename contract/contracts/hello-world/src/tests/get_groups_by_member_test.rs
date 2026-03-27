@@ -72,6 +72,9 @@ fn test_get_groups_by_member() {
 
     // Delete group 1 to see if admin still has it indexed
     client.deactivate_group(&id1, &creator1);
+    for _ in 0..10 {
+        client.reduce_usage(&id1);
+    }
     client.delete_group(&id1, &creator1);
 
     // admin was in group 1, should no longer see it after the group is deleted
