@@ -43,7 +43,11 @@ fn test_get_group_contributions_pagination() {
             });
         }
         let key = DataKey::GroupContributions(group_id.clone());
-        test_env.env.storage().persistent().set(&key, &contributions);
+        test_env
+            .env
+            .storage()
+            .persistent()
+            .set(&key, &contributions);
     });
 
     // Test page 1: offset 0, limit 10
@@ -100,7 +104,11 @@ fn test_get_user_contributions_pagination() {
             });
         }
         let key = DataKey::UserContributions(user.clone());
-        test_env.env.storage().persistent().set(&key, &contributions);
+        test_env
+            .env
+            .storage()
+            .persistent()
+            .set(&key, &contributions);
     });
 
     // Test page 1: offset 0, limit 10
