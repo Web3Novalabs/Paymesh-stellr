@@ -1,15 +1,15 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_distribution, emit_fundraising_reset, AdminTransferred,
-    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
-    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred,
-    Withdrawal,
+    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
+    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
+    GroupNameUpdated, Withdrawal, emit_creator_is_member,
 };
 
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
-    FundraisingContribution, GroupMember, GroupPage, GroupStats, MemberAmount,
-    MemberDistributionRecord, PaymentHistory,
+    FundraisingContribution, GroupMember, GroupStats, MemberAmount, MemberDistributionRecord,
+    PaymentHistory, GroupPage
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -43,6 +43,7 @@ const DAY_IN_LEDGERS: u32 = 17280;
 const PERSISTENT_BUMP_THRESHOLD: u32 = 7 * DAY_IN_LEDGERS; // 1 week
 const PERSISTENT_BUMP_AMOUNT: u32 = 30 * DAY_IN_LEDGERS; // 30 days
 const MAX_MEMBERS: u32 = 50; // Maximum number of members per group to prevent DoS
+const CONTRACT_VERSION: u32 = 1;
 
 fn bump_persistent<K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, key: &K) {
     if env.storage().persistent().has(key) {
@@ -381,6 +382,10 @@ pub fn add_group_member(
         return Err(Error::MaxMembersExceeded);
     }
 
+    if address == details.creator {
+        emit_creator_is_member(&env, id.clone());
+    }
+
     // Add new member
     details.members.push_back(GroupMember {
         address: address.clone(),
@@ -712,6 +717,10 @@ pub fn get_paused_status(env: &Env) -> bool {
     is_paused
 }
 
+pub fn get_contract_version(_env: Env) -> u32 {
+    CONTRACT_VERSION
+}
+
 // ============================================================================
 // Supported Tokens Management
 // ============================================================================
@@ -976,6 +985,72 @@ pub fn get_group_payment_history(env: Env, id: BytesN<32>) -> Vec<PaymentHistory
     result.unwrap_or(Vec::new(&env))
 }
 
+pub fn get_user_pay_history_paginated(
+    env: Env,
+    user: Address,
+    offset: u32,
+    limit: u32,
+) -> (Vec<PaymentHistory>, u32) {
+    let user_history_key = DataKey::UserPaymentHistory(user);
+    let history: Vec<PaymentHistory> = env
+        .storage()
+        .persistent()
+        .get(&user_history_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = history.len();
+    if total > 0 {
+        bump_persistent(&env, &user_history_key);
+    }
+
+    let actual_limit = limit.min(20);
+    let mut paginated_history = Vec::new(&env);
+
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(payment) = history.get(i) {
+                paginated_history.push_back(payment);
+            }
+        }
+    }
+
+    (paginated_history, total)
+}
+
+pub fn get_group_pay_history_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> (Vec<PaymentHistory>, u32) {
+    let group_history_key = DataKey::GroupPaymentHistory(id);
+    let history: Vec<PaymentHistory> = env
+        .storage()
+        .persistent()
+        .get(&group_history_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = history.len();
+    if total > 0 {
+        bump_persistent(&env, &group_history_key);
+    }
+
+    let actual_limit = limit.min(20);
+    let mut paginated_history = Vec::new(&env);
+
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(payment) = history.get(i) {
+                paginated_history.push_back(payment);
+            }
+        }
+    }
+
+    (paginated_history, total)
+}
+
 // ============================================================================
 // Distribution History
 // ============================================================================
@@ -1181,6 +1256,10 @@ pub fn update_members(
             }
         }
         seen_addresses.push_back(member.address.clone());
+
+        if member.address == details.creator {
+            emit_creator_is_member(&env, id.clone());
+        }
     }
 
     if total_percentage != 100 {
@@ -1477,15 +1556,17 @@ pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Err
         return Err(Error::GroupNotDeactivated);
     }
 
-    // Step 4: Check group has 0 remaining usages (or warn about forfeiture)
-    // We allow deletion even with remaining usages, but this is a design choice
-    // In production, you might want to enforce zero usages or handle refunds
-    if details.usage_count > 0 {
-        // Option 1: Strict enforcement - uncomment to require zero usages
-        // return Err(Error::GroupHasRemainingUsages);
+    // Step 4: Check if group has active fundraising
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    if let Some(fundraising) = env.storage().persistent().get::<_, FundraisingConfig>(&fundraising_key) {
+        if fundraising.is_active {
+            return Err(Error::GroupHasActiveFundraising);
+        }
+    }
 
-        // Option 2: Allow deletion with forfeiture (current implementation)
-        // The remaining usages are simply forfeited
+    // Step 5: Check group has 0 remaining usages
+    if details.usage_count > 0 {
+        return Err(Error::GroupHasRemainingUsages);
     }
 
     // Step 5: Remove the group from AllGroups list
@@ -1841,6 +1922,56 @@ pub fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContrib
         bump_persistent(&env, &key);
     }
     result.unwrap_or(Vec::new(&env))
+}
+
+pub fn get_group_contribs_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> (Vec<FundraisingContribution>, u32) {
+    let contributions = get_group_contributions(env.clone(), id);
+    let total = contributions.len();
+
+    // Cap limit at 20
+    let actual_limit = limit.min(20);
+
+    let mut result: Vec<FundraisingContribution> = Vec::new(&env);
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(contribution) = contributions.get(i) {
+                result.push_back(contribution);
+            }
+        }
+    }
+
+    (result, total)
+}
+
+pub fn get_user_contribs_paginated(
+    env: Env,
+    user: Address,
+    offset: u32,
+    limit: u32,
+) -> (Vec<FundraisingContribution>, u32) {
+    let contributions = get_user_contributions(env.clone(), user);
+    let total = contributions.len();
+
+    // Cap limit at 20
+    let actual_limit = limit.min(20);
+
+    let mut result: Vec<FundraisingContribution> = Vec::new(&env);
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(contribution) = contributions.get(i) {
+                result.push_back(contribution);
+            }
+        }
+    }
+
+    (result, total)
 }
 
 fn validate_members(members: &Vec<GroupMember>) -> Result<(), Error> {
@@ -2298,6 +2429,49 @@ pub fn get_groups_by_member_paginated(
     GroupPage {
         groups,
         total,
+        offset,
+        limit: actual_limit,
+    }
+}
+
+pub fn get_groups_by_status_paginated(
+    env: Env,
+    is_active: bool,
+    offset: u32,
+    limit: u32,
+) -> GroupPage {
+    let group_ids = get_all_group_ids(&env);
+
+    // Cap limit at 20 as per requirement
+    let actual_limit = limit.min(20);
+    if actual_limit == 0 {
+        return GroupPage {
+            groups: Vec::new(&env),
+            total: 0,
+            offset,
+            limit: actual_limit,
+        };
+    }
+
+    let mut groups: Vec<AutoShareDetails> = Vec::new(&env);
+    let mut total_matches = 0;
+    let mut matches_returned = 0;
+
+    for id in group_ids.iter() {
+        if let Ok(details) = get_autoshare(env.clone(), id) {
+            if details.is_active == is_active {
+                if total_matches >= offset && matches_returned < actual_limit {
+                    groups.push_back(details);
+                    matches_returned += 1;
+                }
+                total_matches += 1;
+            }
+        }
+    }
+
+    GroupPage {
+        groups,
+        total: total_matches,
         offset,
         limit: actual_limit,
     }

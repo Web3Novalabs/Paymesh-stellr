@@ -29,6 +29,9 @@ pub trait AutoShareTrait {
     /// Returns the current admin address.
     fn get_admin(env: Env) -> Address;
 
+    /// Returns the current contract version.
+    fn get_contract_version(env: Env) -> u32;
+
     /// Transfers admin rights to a new address. Only current admin can call.
     fn transfer_admin(env: Env, current_admin: Address, new_admin: Address);
 
@@ -67,6 +70,14 @@ pub trait AutoShareTrait {
 
     /// Returns the total number of groups.
     fn get_group_count(env: Env) -> u32;
+
+    /// Returns groups by active/inactive status.
+    fn get_groups_by_status_paginated(
+        env: Env,
+        is_active: bool,
+        offset: u32,
+        limit: u32,
+    ) -> crate::base::types::GroupPage;
 
     /// Checks if an address is a member of a specific group.
     fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> bool;
@@ -160,6 +171,22 @@ pub trait AutoShareTrait {
     /// Returns all payment history for a group.
     fn get_group_payment_history(env: Env, id: BytesN<32>) -> Vec<PaymentHistory>;
 
+    /// Returns paginated payment history for a user.
+    fn get_user_pay_history_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<PaymentHistory>, u32);
+
+    /// Returns paginated payment history for a group.
+    fn get_group_pay_history_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<PaymentHistory>, u32);
+
     // ============================================================================
     // Distribution History
     // ============================================================================
@@ -188,6 +215,22 @@ pub trait AutoShareTrait {
 
     /// Returns all contributions made by a specific user.
     fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContribution>;
+
+    /// Returns paginated contributions for a specific group.
+    fn get_group_contribs_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<FundraisingContribution>, u32);
+
+    /// Returns paginated contributions made by a specific user.
+    fn get_user_contribs_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<FundraisingContribution>, u32);
 
     /// Starts a fundraising campaign for a group.
     fn start_fundraising(env: Env, id: BytesN<32>, caller: Address, target_amount: i128);

@@ -187,7 +187,8 @@ fn test_delete_nonexistent_group() {
 }
 
 #[test]
-fn test_delete_group_with_remaining_usages() {
+#[should_panic(expected = "GroupHasRemainingUsages")]
+fn test_delete_group_with_remaining_usages_fails() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -214,12 +215,115 @@ fn test_delete_group_with_remaining_usages() {
     // Don't reduce usages - group still has 10 usages
     assert_eq!(client.get_remaining_usages(&group_id), 10);
 
-    // Delete the group (should succeed with forfeiture)
+    // Delete the group - should fail now
+    client.delete_group(&group_id, &creator);
+}
+
+#[test]
+fn test_delete_group_cleanup_verification() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let member = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    // Initialize admin and add supported token
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[12u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+    
+    // Add member
+    client.add_group_member(&group_id, &creator, &member, &100);
+    
+    // Verify member has the group in index
+    let member_groups = client.get_groups_by_member(&member);
+    assert!(member_groups.iter().any(|g| g.id == group_id));
+
+    // Distribute some funds to have history
+    let distribute_amount = 1000i128;
+    mint_tokens(&env, &token_id, &creator, distribute_amount);
+    client.distribute(&group_id, &token_id, &distribute_amount, &creator);
+
+    // Verify history exists
+    assert_eq!(client.get_group_distributions(&group_id).len(), 1);
+    assert!(client.get_member_earnings(&member, &group_id) > 0);
+
+    let count_before = client.get_group_count();
+
+    // Deactivate and delete
+    client.deactivate_group(&group_id, &creator);
+    let remaining = client.get_remaining_usages(&group_id);
+    for _ in 0..remaining {
+        client.reduce_usage(&group_id);
+    }
     client.delete_group(&group_id, &creator);
 
-    // Verify group is not in all_groups list
+    // (2) Removed from AllGroups
     let all_groups = client.get_all_groups();
-    assert_eq!(all_groups.len(), 0);
+    assert!(!all_groups.iter().any(|g| g.id == group_id));
+
+    // (3) Removed from MemberGroups
+    let member_groups_after = client.get_groups_by_member(&member);
+    assert!(!member_groups_after.iter().any(|g| g.id == group_id));
+
+    // (4) Group count decrements
+    assert_eq!(client.get_group_count(), count_before - 1);
+
+    // (6) Distributions preserved
+    assert_eq!(client.get_group_distributions(&group_id).len(), 1);
+
+    // (7) Earnings preserved
+    assert!(client.get_member_earnings(&member, &group_id) > 0);
+
+    // (8) Re-creating with same ID works
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+    let new_group = client.get(&group_id);
+    assert_eq!(new_group.id, group_id);
+}
+
+#[test]
+#[should_panic(expected = "GroupHasActiveFundraising")]
+fn test_delete_group_with_active_fundraising_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    let group_id = BytesN::from_array(&env, &[14u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Start fundraising
+    client.start_fundraising(&group_id, &creator, &1000);
+    assert!(client.get_fundraising_status(&group_id).is_active);
+
+    // Deactivate group
+    client.deactivate_group(&group_id, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&group_id);
+    }
+
+    // Try to delete - should fail due to active fundraising
+    client.delete_group(&group_id, &creator);
 }
 
 #[test]
