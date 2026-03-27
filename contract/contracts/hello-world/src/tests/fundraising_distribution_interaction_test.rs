@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use crate::test_utils::{mint_tokens, setup_test_env};
 use crate::AutoShareContractClient;
 use soroban_sdk::{BytesN, String};
