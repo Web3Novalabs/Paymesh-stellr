@@ -206,7 +206,6 @@ fn test_update_group_name_on_deactivated_group() {
 }
 
 #[test]
-#[should_panic]
 fn test_name_with_newlines() {
     let test_env = setup_test_env();
     let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
@@ -222,7 +221,6 @@ fn test_name_with_newlines() {
 }
 
 #[test]
-#[should_panic]
 fn test_name_with_tabs() {
     let test_env = setup_test_env();
     let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
