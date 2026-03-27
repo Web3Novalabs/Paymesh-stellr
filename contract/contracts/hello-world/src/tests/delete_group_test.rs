@@ -13,12 +13,12 @@ fn create_test_group(
 ) {
     let client = crate::AutoShareContractClient::new(env, contract_id);
     let name = String::from_str(env, "Test Group");
-    
+
     // Fund the creator with tokens
     let fee = 10; // Default usage fee
     let amount = (10 as i128) * (fee as i128) + 10000;
     mint_tokens(env, token_id, creator, amount);
-    
+
     client.create(&group_id, &name, creator, &10, token_id);
 }
 
