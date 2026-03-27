@@ -159,7 +159,7 @@ pub struct Contribution {
     pub amount: i128,
 }
 
-#[contractevent]
+#[contractevent(data_format = "single-value")]
 #[derive(Clone)]
 pub struct CreatorIsMember {
     #[topic]
@@ -167,5 +167,5 @@ pub struct CreatorIsMember {
 }
 
 pub fn emit_creator_is_member(env: &Env, id: BytesN<32>) {
-    env.events().publish(("CreatorIsMember",), CreatorIsMember { id });
+    CreatorIsMember { id }.publish(env);
 }
