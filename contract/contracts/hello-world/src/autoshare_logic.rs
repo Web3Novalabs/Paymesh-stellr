@@ -1843,6 +1843,56 @@ pub fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContrib
     result.unwrap_or(Vec::new(&env))
 }
 
+pub fn get_group_contributions_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> (Vec<FundraisingContribution>, u32) {
+    let contributions = get_group_contributions(env.clone(), id);
+    let total = contributions.len();
+
+    // Cap limit at 20
+    let actual_limit = limit.min(20);
+
+    let mut result: Vec<FundraisingContribution> = Vec::new(&env);
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(contribution) = contributions.get(i) {
+                result.push_back(contribution);
+            }
+        }
+    }
+
+    (result, total)
+}
+
+pub fn get_user_contributions_paginated(
+    env: Env,
+    user: Address,
+    offset: u32,
+    limit: u32,
+) -> (Vec<FundraisingContribution>, u32) {
+    let contributions = get_user_contributions(env.clone(), user);
+    let total = contributions.len();
+
+    // Cap limit at 20
+    let actual_limit = limit.min(20);
+
+    let mut result: Vec<FundraisingContribution> = Vec::new(&env);
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(contribution) = contributions.get(i) {
+                result.push_back(contribution);
+            }
+        }
+    }
+
+    (result, total)
+}
+
 fn validate_members(members: &Vec<GroupMember>) -> Result<(), Error> {
     if members.is_empty() {
         return Err(Error::EmptyMembers);

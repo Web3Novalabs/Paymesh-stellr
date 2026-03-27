@@ -374,6 +374,26 @@ impl AutoShareContract {
         autoshare_logic::get_user_contributions(env, user)
     }
 
+    /// Returns paginated contributions for a specific group.
+    pub fn get_group_contributions_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::FundraisingContribution>, u32) {
+        autoshare_logic::get_group_contributions_paginated(env, id, offset, limit)
+    }
+
+    /// Returns paginated contributions made by a specific user.
+    pub fn get_user_contributions_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::FundraisingContribution>, u32) {
+        autoshare_logic::get_user_contributions_paginated(env, user, offset, limit)
+    }
+
     /// Starts a fundraising campaign for a group.
     pub fn start_fundraising(env: Env, id: BytesN<32>, caller: Address, target_amount: i128) {
         autoshare_logic::start_fundraising(env, id, caller, target_amount).unwrap();
@@ -471,6 +491,10 @@ mod pagination_test;
 #[cfg(test)]
 #[path = "tests/fundraising_test.rs"]
 mod fundraising_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_pagination_test.rs"]
+mod fundraising_pagination_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_start_test.rs"]

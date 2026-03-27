@@ -189,6 +189,22 @@ pub trait AutoShareTrait {
     /// Returns all contributions made by a specific user.
     fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContribution>;
 
+    /// Returns paginated contributions for a specific group.
+    fn get_group_contributions_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<FundraisingContribution>, u32);
+
+    /// Returns paginated contributions made by a specific user.
+    fn get_user_contributions_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<FundraisingContribution>, u32);
+
     /// Starts a fundraising campaign for a group.
     fn start_fundraising(env: Env, id: BytesN<32>, caller: Address, target_amount: i128);
 
