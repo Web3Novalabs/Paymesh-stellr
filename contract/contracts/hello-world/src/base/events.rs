@@ -212,3 +212,14 @@ pub fn emit_fundraising_completed(
     }
     .publish(env);
 }
+
+#[contractevent(data_format = "single-value")]
+#[derive(Clone)]
+pub struct FundraisingReset {
+    #[topic]
+    pub id: BytesN<32>,
+}
+
+pub fn emit_fundraising_reset(env: &Env, id: BytesN<32>) {
+    FundraisingReset { id }.publish(env);
+}

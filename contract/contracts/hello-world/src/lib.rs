@@ -47,6 +47,11 @@ impl AutoShareContract {
         autoshare_logic::get_paused_status(&env)
     }
 
+    /// Admin-only tool to force-delete any group.
+    pub fn admin_delete_group(env: Env, admin: Address, id: BytesN<32>) {
+        autoshare_logic::admin_delete_group(env, admin, id).unwrap();
+    }
+
     // ============================================================================
     // AutoShare Group Management
     // ============================================================================
@@ -388,6 +393,11 @@ impl AutoShareContract {
     pub fn get_fundraising_remaining(env: Env, id: BytesN<32>) -> i128 {
         autoshare_logic::get_fundraising_remaining(env, id)
     }
+
+    /// Resets a completed or cancelled fundraising campaign.
+    pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::reset_fundraising(env, id, caller).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -478,3 +488,7 @@ mod delete_group_test;
 #[cfg(test)]
 #[path = "tests/fundraising_distribution_interaction_test.rs"]
 mod fundraising_distribution_interaction_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_reset_test.rs"]
+mod fundraising_reset_test;
