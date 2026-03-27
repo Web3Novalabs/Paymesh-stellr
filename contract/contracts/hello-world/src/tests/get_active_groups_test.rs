@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_tokens};
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};

@@ -33,4 +33,5 @@ pub enum Error {
     FundraisingNotActive = 33,
     GroupHasActiveFundraising = 34,
     GroupHasRemainingUsages = 35,
+    BelowMinimumContribution = 36,
 }
