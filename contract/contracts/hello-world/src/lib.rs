@@ -258,6 +258,11 @@ impl AutoShareContract {
         autoshare_logic::get_usage_fee(env)
     }
 
+    /// Sets the maximum number of members per group (admin only).
+    pub fn set_max_members(env: Env, admin: Address, max: u32) {
+        autoshare_logic::set_max_members(env, admin, max).unwrap();
+    }
+
     // ============================================================================
     // Subscription Management
     // ============================================================================
@@ -398,6 +403,16 @@ impl AutoShareContract {
     pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::reset_fundraising(env, id, caller).unwrap();
     }
+
+    /// Updates the target amount for a fundraising campaign.
+    pub fn set_fundraising_target(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_target: i128,
+    ) {
+        autoshare_logic::set_fundraising_target(env, id, caller, new_target).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -488,3 +503,7 @@ mod delete_group_test;
 #[cfg(test)]
 #[path = "tests/fundraising_reset_test.rs"]
 mod fundraising_reset_test;
+
+#[cfg(test)]
+#[path = "tests/issue_implementations_test.rs"]
+mod issue_implementations_test;
