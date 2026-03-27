@@ -47,6 +47,11 @@ impl AutoShareContract {
         autoshare_logic::get_paused_status(&env)
     }
 
+    /// Admin-only tool to force-delete any group.
+    pub fn admin_delete_group(env: Env, admin: Address, id: BytesN<32>) {
+        autoshare_logic::admin_delete_group(env, admin, id).unwrap();
+    }
+
     // ============================================================================
     // AutoShare Group Management
     // ============================================================================

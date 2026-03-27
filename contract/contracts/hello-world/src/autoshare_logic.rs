@@ -1391,6 +1391,103 @@ pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Err
     Ok(())
 }
 
+pub fn admin_delete_group(env: Env, admin: Address, id: BytesN<32>) -> Result<(), Error> {
+    // 1. Require admin auth
+    admin.require_auth();
+
+    // 2. Verify caller is the contract admin
+    require_admin(&env, &admin)?;
+
+    // 3. Read AutoShare(id), returning Error::NotFound if missing
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    // 4. if a fundraising campaign is active, sets it to inactive first
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    if let Some(mut config) = env
+        .storage()
+        .persistent()
+        .get::<_, FundraisingConfig>(&fundraising_key)
+    {
+        if config.is_active {
+            config.is_active = false;
+            env.storage().persistent().set(&fundraising_key, &config);
+            bump_persistent(&env, &fundraising_key);
+        }
+    }
+
+    // 5. Removes the group from AllGroups vector
+    let all_groups_key = DataKey::AllGroups;
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&all_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    let mut new_group_ids: Vec<BytesN<32>> = Vec::new(&env);
+    let mut group_found = false;
+    for group_id in group_ids.iter() {
+        if group_id != id {
+            new_group_ids.push_back(group_id);
+        } else {
+            group_found = true;
+        }
+    }
+
+    if group_found {
+        env.storage()
+            .persistent()
+            .set(&all_groups_key, &new_group_ids);
+        bump_persistent(&env, &all_groups_key);
+    }
+
+    // 6. removes the group from all members' MemberGroups
+    for member in details.members.iter() {
+        let member_groups_key = DataKey::MemberGroups(member.address.clone());
+        if let Some(member_groups) = env
+            .storage()
+            .persistent()
+            .get::<_, Vec<BytesN<32>>>(&member_groups_key)
+        {
+            let mut updated_member_groups: Vec<BytesN<32>> = Vec::new(&env);
+            let mut found = false;
+            for group_id in member_groups.iter() {
+                if group_id != id {
+                    updated_member_groups.push_back(group_id);
+                } else {
+                    found = true;
+                }
+            }
+            if found {
+                env.storage()
+                    .persistent()
+                    .set(&member_groups_key, &updated_member_groups);
+                bump_persistent(&env, &member_groups_key);
+            }
+        }
+    }
+
+    // 7. deletes AutoShare(id) from storage
+    env.storage().persistent().remove(&key);
+
+    // 8. preserves all payment history and distribution records
+    // (Explicitly not deleting UserPaymentHistory, GroupPaymentHistory, GroupDistributions keys)
+
+    // 9. emits GroupDeleted event
+    GroupDeleted {
+        deleter: admin,
+        id: id.clone(),
+    }
+    .publish(&env);
+
+    Ok(())
+}
+
 // ============================================================================
 // Contract Balance & Withdrawal
 // ============================================================================
