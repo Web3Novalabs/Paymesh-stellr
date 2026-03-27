@@ -940,6 +940,21 @@ pub fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionReco
         .unwrap_or(Vec::new(&env))
 }
 
+pub fn get_group_total_distributed(env: Env, id: BytesN<32>) -> i128 {
+    let group_dist_key = DataKey::GroupDistributions(id);
+    let distributions: Vec<DistributionRecord> = env
+        .storage()
+        .persistent()
+        .get(&group_dist_key)
+        .unwrap_or(Vec::new(&env));
+
+    let mut total: i128 = 0;
+    for dist in distributions.iter() {
+        total += dist.total_amount;
+    }
+    total
+}
+
 pub fn get_member_distributions(env: Env, member: Address) -> Vec<MemberDistributionRecord> {
     let member_dist_key = DataKey::MemberDistributions(member);
     env.storage()
