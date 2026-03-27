@@ -2,7 +2,7 @@ use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_distribution, AdminTransferred, AutoshareCreated, AutoshareUpdated,
     ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated,
-    GroupDeleted, GroupNameUpdated, Withdrawal,
+    GroupDeleted, GroupNameUpdated, Withdrawal, emit_creator_is_member,
 };
 
 use crate::base::types::{
@@ -378,6 +378,10 @@ pub fn add_group_member(
     // Check if adding this member would exceed MAX_MEMBERS
     if details.members.len() >= MAX_MEMBERS {
         return Err(Error::MaxMembersExceeded);
+    }
+
+    if address == details.creator {
+        emit_creator_is_member(&env, id.clone());
     }
 
     // Add new member
@@ -1048,6 +1052,10 @@ pub fn update_members(
             }
         }
         seen_addresses.push_back(member.address.clone());
+
+        if member.address == details.creator {
+            emit_creator_is_member(&env, id.clone());
+        }
     }
 
     if total_percentage != 100 {

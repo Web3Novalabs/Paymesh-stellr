@@ -158,3 +158,14 @@ pub struct Contribution {
     pub token: Address,
     pub amount: i128,
 }
+
+#[contractevent]
+#[derive(Clone)]
+pub struct CreatorIsMember {
+    #[topic]
+    pub id: BytesN<32>,
+}
+
+pub fn emit_creator_is_member(env: &Env, id: BytesN<32>) {
+    env.events().publish(("CreatorIsMember",), CreatorIsMember { id });
+}
