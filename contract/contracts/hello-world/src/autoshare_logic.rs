@@ -1,9 +1,8 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_distribution, emit_fundraising_reset, AdminTransferred,
-    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
-    GroupNameUpdated, Withdrawal,
+    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
+    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, Withdrawal,
 };
 
 use crate::base::types::{
