@@ -190,7 +190,7 @@ pub trait AutoShareTrait {
     fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContribution>;
 
     /// Returns paginated contributions for a specific group.
-    fn get_group_contributions_paginated(
+    fn get_group_contribs_paginated(
         env: Env,
         id: BytesN<32>,
         offset: u32,
@@ -198,7 +198,7 @@ pub trait AutoShareTrait {
     ) -> (Vec<FundraisingContribution>, u32);
 
     /// Returns paginated contributions made by a specific user.
-    fn get_user_contributions_paginated(
+    fn get_user_contribs_paginated(
         env: Env,
         user: Address,
         offset: u32,

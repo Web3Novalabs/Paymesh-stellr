@@ -1843,7 +1843,7 @@ pub fn get_user_contributions(env: Env, user: Address) -> Vec<FundraisingContrib
     result.unwrap_or(Vec::new(&env))
 }
 
-pub fn get_group_contributions_paginated(
+pub fn get_group_contribs_paginated(
     env: Env,
     id: BytesN<32>,
     offset: u32,
@@ -1868,7 +1868,7 @@ pub fn get_group_contributions_paginated(
     (result, total)
 }
 
-pub fn get_user_contributions_paginated(
+pub fn get_user_contribs_paginated(
     env: Env,
     user: Address,
     offset: u32,

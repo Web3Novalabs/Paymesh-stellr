@@ -375,23 +375,23 @@ impl AutoShareContract {
     }
 
     /// Returns paginated contributions for a specific group.
-    pub fn get_group_contributions_paginated(
+    pub fn get_group_contribs_paginated(
         env: Env,
         id: BytesN<32>,
         offset: u32,
         limit: u32,
     ) -> (Vec<base::types::FundraisingContribution>, u32) {
-        autoshare_logic::get_group_contributions_paginated(env, id, offset, limit)
+        autoshare_logic::get_group_contribs_paginated(env, id, offset, limit)
     }
 
     /// Returns paginated contributions made by a specific user.
-    pub fn get_user_contributions_paginated(
+    pub fn get_user_contribs_paginated(
         env: Env,
         user: Address,
         offset: u32,
         limit: u32,
     ) -> (Vec<base::types::FundraisingContribution>, u32) {
-        autoshare_logic::get_user_contributions_paginated(env, user, offset, limit)
+        autoshare_logic::get_user_contribs_paginated(env, user, offset, limit)
     }
 
     /// Starts a fundraising campaign for a group.
