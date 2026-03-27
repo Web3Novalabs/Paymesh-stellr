@@ -453,7 +453,7 @@ pub fn batch_add_members(
     }
 
     // Check combined count won't exceed the configured max members
-    if details.members.len() + new_members.len() > get_max_members(&env) as usize {
+    if details.members.len() + new_members.len() > get_max_members(&env) {
         return Err(Error::MaxMembersExceeded);
     }
 
