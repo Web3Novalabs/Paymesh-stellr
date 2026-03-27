@@ -2,7 +2,7 @@ use crate::autoshare_logic::DataKey;
 use crate::base::types::FundraisingContribution;
 use crate::test_utils::setup_test_env;
 use crate::AutoShareContractClient;
-use soroban_sdk::{Address, BytesN, Vec};
+use soroban_sdk::{BytesN, Vec};
 
 #[test]
 fn test_get_contributions_paginated_empty() {
