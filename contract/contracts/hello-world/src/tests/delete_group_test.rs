@@ -241,10 +241,10 @@ fn test_delete_group_cleanup_verification() {
     // Create a group
     let group_id = BytesN::from_array(&env, &[12u8; 32]);
     create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
-    
+
     // Add member
     client.add_group_member(&group_id, &creator, &member, &100);
-    
+
     // Verify member has the group in index
     let member_groups = client.get_groups_by_member(&member);
     assert!(member_groups.iter().any(|g| g.id == group_id));

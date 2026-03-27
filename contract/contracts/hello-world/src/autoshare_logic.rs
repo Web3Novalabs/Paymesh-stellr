@@ -1558,7 +1558,11 @@ pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Err
 
     // Step 4: Check if group has active fundraising
     let fundraising_key = DataKey::GroupFundraising(id.clone());
-    if let Some(fundraising) = env.storage().persistent().get::<_, FundraisingConfig>(&fundraising_key) {
+    if let Some(fundraising) = env
+        .storage()
+        .persistent()
+        .get::<_, FundraisingConfig>(&fundraising_key)
+    {
         if fundraising.is_active {
             return Err(Error::GroupHasActiveFundraising);
         }
