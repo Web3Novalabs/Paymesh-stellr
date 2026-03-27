@@ -388,6 +388,11 @@ impl AutoShareContract {
     pub fn get_fundraising_remaining(env: Env, id: BytesN<32>) -> i128 {
         autoshare_logic::get_fundraising_remaining(env, id)
     }
+
+    /// Resets a completed or cancelled fundraising campaign.
+    pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::reset_fundraising(env, id, caller).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -474,3 +479,7 @@ mod event_emission_test;
 #[cfg(test)]
 #[path = "tests/delete_group_test.rs"]
 mod delete_group_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_reset_test.rs"]
+mod fundraising_reset_test;

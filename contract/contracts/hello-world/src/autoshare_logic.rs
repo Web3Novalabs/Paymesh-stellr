@@ -1,8 +1,9 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_distribution, AdminTransferred, AutoshareCreated, AutoshareUpdated,
-    ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated,
-    GroupDeleted, GroupNameUpdated, Withdrawal,
+    emit_contribution, emit_distribution, emit_fundraising_reset, AdminTransferred,
+    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
+    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
+    GroupNameUpdated, Withdrawal,
 };
 
 use crate::base::types::{
@@ -983,8 +984,6 @@ pub fn get_total_usages_paid(env: Env, id: BytesN<32>) -> Result<u32, Error> {
     Ok(details.total_usages_paid)
 }
 
-#[cfg(test)]
-#[allow(dead_code)]
 pub fn reduce_usage(env: Env, id: BytesN<32>) -> Result<(), Error> {
     let key = DataKey::AutoShare(id);
     let mut details: AutoShareDetails = env
@@ -1917,6 +1916,61 @@ pub fn get_fundraising_remaining(env: Env, id: BytesN<32>) -> i128 {
     } else {
         0
     }
+}
+
+pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    // 1. Authorize caller
+    caller.require_auth();
+
+    // 2. Check if contract is paused
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // 3. Verify group existence and creator
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    // 4. Check fundraising exists and is NOT active
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    let config: FundraisingConfig = env
+        .storage()
+        .persistent()
+        .get(&fundraising_key)
+        .ok_or(Error::FundraisingNotActive)?;
+    bump_persistent(&env, &fundraising_key);
+
+    if config.is_active {
+        return Err(Error::FundraisingAlreadyActive);
+    }
+
+    // 5. Remove current fundraising configuration
+    env.storage().persistent().remove(&fundraising_key);
+
+    // 6. Clear contributions and stats for a fresh start
+    let contributions_key = DataKey::GroupContributions(id.clone());
+    if env.storage().persistent().has(&contributions_key) {
+        env.storage().persistent().remove(&contributions_key);
+    }
+
+    let stats_key = DataKey::GroupStats(id.clone());
+    if env.storage().persistent().has(&stats_key) {
+        env.storage().persistent().remove(&stats_key);
+    }
+
+    // 7. Emit reset event
+    emit_fundraising_reset(&env, id);
+
+    Ok(())
 }
 
 pub fn get_groups_by_member_paginated(
