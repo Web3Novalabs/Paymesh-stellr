@@ -160,6 +160,22 @@ pub trait AutoShareTrait {
     /// Returns all payment history for a group.
     fn get_group_payment_history(env: Env, id: BytesN<32>) -> Vec<PaymentHistory>;
 
+    /// Returns paginated payment history for a user.
+    fn get_user_pay_history_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<PaymentHistory>, u32);
+
+    /// Returns paginated payment history for a group.
+    fn get_group_pay_history_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<PaymentHistory>, u32);
+
     // ============================================================================
     // Distribution History
     // ============================================================================

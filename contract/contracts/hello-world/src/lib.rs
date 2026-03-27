@@ -309,6 +309,26 @@ impl AutoShareContract {
         autoshare_logic::get_group_payment_history(env, id)
     }
 
+    /// Returns paginated payment history for a user.
+    pub fn get_user_pay_history_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::PaymentHistory>, u32) {
+        autoshare_logic::get_user_pay_history_paginated(env, user, offset, limit)
+    }
+
+    /// Returns paginated payment history for a group.
+    pub fn get_group_pay_history_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::PaymentHistory>, u32) {
+        autoshare_logic::get_group_pay_history_paginated(env, id, offset, limit)
+    }
+
     // ============================================================================
     // Distribution History
     // ============================================================================
@@ -467,6 +487,10 @@ mod earnings_test;
 #[cfg(test)]
 #[path = "tests/pagination_test.rs"]
 mod pagination_test;
+
+#[cfg(test)]
+#[path = "tests/payment_pagination_test.rs"]
+mod payment_pagination_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_test.rs"]

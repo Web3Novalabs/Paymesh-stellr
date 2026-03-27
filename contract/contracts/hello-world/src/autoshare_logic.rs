@@ -976,6 +976,72 @@ pub fn get_group_payment_history(env: Env, id: BytesN<32>) -> Vec<PaymentHistory
     result.unwrap_or(Vec::new(&env))
 }
 
+pub fn get_user_pay_history_paginated(
+    env: Env,
+    user: Address,
+    offset: u32,
+    limit: u32,
+) -> (Vec<PaymentHistory>, u32) {
+    let user_history_key = DataKey::UserPaymentHistory(user);
+    let history: Vec<PaymentHistory> = env
+        .storage()
+        .persistent()
+        .get(&user_history_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = history.len();
+    if total > 0 {
+        bump_persistent(&env, &user_history_key);
+    }
+
+    let actual_limit = limit.min(20);
+    let mut paginated_history = Vec::new(&env);
+
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(payment) = history.get(i) {
+                paginated_history.push_back(payment);
+            }
+        }
+    }
+
+    (paginated_history, total)
+}
+
+pub fn get_group_pay_history_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> (Vec<PaymentHistory>, u32) {
+    let group_history_key = DataKey::GroupPaymentHistory(id);
+    let history: Vec<PaymentHistory> = env
+        .storage()
+        .persistent()
+        .get(&group_history_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = history.len();
+    if total > 0 {
+        bump_persistent(&env, &group_history_key);
+    }
+
+    let actual_limit = limit.min(20);
+    let mut paginated_history = Vec::new(&env);
+
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(payment) = history.get(i) {
+                paginated_history.push_back(payment);
+            }
+        }
+    }
+
+    (paginated_history, total)
+}
+
 // ============================================================================
 // Distribution History
 // ============================================================================
