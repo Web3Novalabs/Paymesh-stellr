@@ -532,6 +532,10 @@ mod event_emission_test;
 mod delete_group_test;
 
 #[cfg(test)]
+#[path = "tests/fundraising_distribution_interaction_test.rs"]
+mod fundraising_distribution_interaction_test;
+
+#[cfg(test)]
 #[path = "tests/transfer_group_ownership_test.rs"]
 mod transfer_group_ownership_test;
 
