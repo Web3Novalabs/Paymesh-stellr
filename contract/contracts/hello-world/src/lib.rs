@@ -531,3 +531,7 @@ mod fundraising_reset_test;
 #[cfg(test)]
 #[path = "tests/group_name_validation_test.rs"]
 mod group_name_validation_test;
+
+#[cfg(test)]
+#[path = "tests/withdraw_test.rs"]
+mod withdraw_test;
