@@ -1,13 +1,10 @@
-#![cfg(test)]
-
-use crate::base::types::GroupMember;
 use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_tokens};
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-fn setup(env: &Env) -> (Address, Address, AutoShareContractClient) {
+fn setup(env: &Env) -> (Address, Address, AutoShareContractClient<'_>) {
     let admin = Address::generate(env);
     let contract_id = deploy_autoshare_contract(env, &admin);
     let client = AutoShareContractClient::new(env, &contract_id);
@@ -36,7 +33,13 @@ fn create_group(
 ) -> BytesN<32> {
     let id = make_group_id(env, seed);
     mint_tokens(env, token, creator, 10_000);
-    client.create(&id, &String::from_str(env, "Test Group"), creator, &5, token);
+    client.create(
+        &id,
+        &String::from_str(env, "Test Group"),
+        creator,
+        &5,
+        token,
+    );
     id
 }
 
@@ -255,7 +258,7 @@ fn test_add_many_tokens_all_queryable() {
     let (admin, _, client) = setup(&env);
 
     let mut added: Vec<Address> = Vec::new(&env);
-    for i in 0u32..20 {
+    for _i in 0u32..20 {
         // Use a unique symbol per token by embedding the index in the name
         let token = new_token(&env, "TK");
         // Disambiguate by minting a unique amount so addresses differ — addresses

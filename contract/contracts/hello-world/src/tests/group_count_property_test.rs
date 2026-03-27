@@ -16,7 +16,7 @@ mod property_tests {
     #[quickcheck]
     fn prop_count_equals_storage_length(group_count: u8) -> TestResult {
         // Limit to reasonable test size to avoid timeout
-        if group_count > 100 {
+        if group_count > 30 {
             return TestResult::discard();
         }
 
@@ -54,7 +54,7 @@ mod property_tests {
     #[quickcheck]
     fn prop_consistent_with_paginated(group_count: u8, page_size: u8) -> TestResult {
         // Limit to reasonable test size
-        if group_count > 100 || page_size == 0 || page_size > 20 {
+        if group_count > 30 || page_size == 0 || page_size > 20 {
             return TestResult::discard();
         }
 

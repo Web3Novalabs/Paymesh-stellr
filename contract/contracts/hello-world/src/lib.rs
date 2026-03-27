@@ -52,6 +52,11 @@ impl AutoShareContract {
         autoshare_logic::get_contract_version(env)
     }
 
+    /// Admin-only tool to force-delete any group.
+    pub fn admin_delete_group(env: Env, admin: Address, id: BytesN<32>) {
+        autoshare_logic::admin_delete_group(env, admin, id).unwrap();
+    }
+
     // ============================================================================
     // AutoShare Group Management
     // ============================================================================
@@ -198,6 +203,11 @@ impl AutoShareContract {
     /// Group must be deactivated first and have 0 remaining usages.
     pub fn delete_group(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::delete_group(env, id, caller).unwrap();
+    }
+
+    /// Reduces the remaining usage count of a group by 1.
+    pub fn reduce_usage(env: Env, id: BytesN<32>) {
+        autoshare_logic::reduce_usage(env, id).unwrap();
     }
 
     /// Returns the current admin address.
@@ -399,9 +409,9 @@ impl AutoShareContract {
         autoshare_logic::get_fundraising_remaining(env, id)
     }
 
-    #[cfg(test)]
-    pub fn reduce_usage(env: Env, id: BytesN<32>) {
-        autoshare_logic::reduce_usage(env, id).unwrap();
+    /// Resets a completed or cancelled fundraising campaign.
+    pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::reset_fundraising(env, id, caller).unwrap();
     }
 }
 
@@ -474,5 +484,22 @@ mod token_management_test;
 #[path = "tests/topup_subscription_test.rs"]
 mod topup_subscription_test;
 
+#[cfg(test)]
 #[path = "tests/get_active_groups_test.rs"]
 mod get_active_groups_test;
+
+#[cfg(test)]
+#[path = "tests/distribution_rounding_test.rs"]
+mod distribution_rounding_test;
+
+#[cfg(test)]
+#[path = "tests/event_emission_test.rs"]
+mod event_emission_test;
+
+#[cfg(test)]
+#[path = "tests/delete_group_test.rs"]
+mod delete_group_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_reset_test.rs"]
+mod fundraising_reset_test;

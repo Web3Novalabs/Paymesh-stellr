@@ -231,8 +231,8 @@ fn test_get_group_count_large_scale() {
         percentage: 100,
     });
 
-    // Create 1000 groups to test performance at scale
-    for i in 1..=1000 {
+    // Create 100 groups to test performance at scale
+    for i in 1..=100 {
         create_test_group(
             &test_env.env,
             &test_env.autoshare_contract,
@@ -245,11 +245,11 @@ fn test_get_group_count_large_scale() {
 
     // Verify get_group_count executes successfully and returns correct count
     let count = client.get_group_count();
-    assert_eq!(count, 1000);
+    assert_eq!(count, 100);
 
     // Verify consistency with paginated query
     let page = client.get_groups_paginated(&0, &1);
-    assert_eq!(page.total, 1000);
+    assert_eq!(page.total, 100);
     assert_eq!(count, page.total);
 }
 

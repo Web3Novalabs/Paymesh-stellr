@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use crate::test_utils::{assert_balance, create_test_group, mint_tokens, setup_test_env};
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Vec};
@@ -34,7 +32,7 @@ fn test_topup_subscription_success() {
 
     let remaining = client.get_remaining_usages(&id);
     assert_eq!(remaining, initial_usages + additional_usages);
-    
+
     // Check fee was transferred (contract balance)
     // Initial 5 usages * 10 fee = 50. Topup 10 usages * 10 fee = 100. Total = 150.
     assert_balance(&env, &token, &contract, 150);
@@ -61,8 +59,15 @@ fn test_topup_subscription_unsupported_token_fails() {
     let env = test_env.env;
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
 
-    let id = create_test_group(&env, &test_env.autoshare_contract, &test_env.users.get(0).unwrap(), &Vec::new(&env), 5, &test_env.mock_tokens.get(0).unwrap());
-    
+    let id = create_test_group(
+        &env,
+        &test_env.autoshare_contract,
+        &test_env.users.get(0).unwrap(),
+        &Vec::new(&env),
+        5,
+        &test_env.mock_tokens.get(0).unwrap(),
+    );
+
     let unsupported_token = Address::generate(&env);
     let payer = test_env.users.get(0).unwrap().clone();
 
@@ -91,7 +96,7 @@ fn test_topup_subscription_fails_when_paused() {
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
 
     client.pause(&test_env.admin);
-    
+
     let id = BytesN::from_array(&env, &[3; 32]);
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let payer = test_env.users.get(0).unwrap().clone();
@@ -103,7 +108,14 @@ fn test_topup_subscription_fails_when_paused() {
 fn test_topup_subscription_updates_total_usages_paid() {
     let test_env = setup_test_env();
     let env = test_env.env;
-    let id = create_test_group(&env, &test_env.autoshare_contract, &test_env.users.get(0).unwrap(), &Vec::new(&env), 5, &test_env.mock_tokens.get(0).unwrap());
+    let id = create_test_group(
+        &env,
+        &test_env.autoshare_contract,
+        &test_env.users.get(0).unwrap(),
+        &Vec::new(&env),
+        5,
+        &test_env.mock_tokens.get(0).unwrap(),
+    );
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let payer = test_env.users.get(1).unwrap().clone();
@@ -124,7 +136,14 @@ fn test_topup_subscription_records_payment_history() {
     let payer = test_env.users.get(1).unwrap().clone();
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
 
-    let id = create_test_group(&env, &test_env.autoshare_contract, &creator, &Vec::new(&env), 5, &token);
+    let id = create_test_group(
+        &env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(&env),
+        5,
+        &token,
+    );
 
     mint_tokens(&env, &token, &payer, 200);
     client.topup_subscription(&id, &20, &token, &payer);
@@ -146,7 +165,14 @@ fn test_topup_subscription_multiple_accumulates_correctly() {
     let payer = test_env.users.get(0).unwrap().clone();
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
 
-    let id = create_test_group(&env, &test_env.autoshare_contract, &payer, &Vec::new(&env), 5, &token);
+    let id = create_test_group(
+        &env,
+        &test_env.autoshare_contract,
+        &payer,
+        &Vec::new(&env),
+        5,
+        &token,
+    );
 
     mint_tokens(&env, &token, &payer, 500);
     client.topup_subscription(&id, &10, &token, &payer);
@@ -165,8 +191,15 @@ fn test_topup_subscription_works_for_exhausted_subscription() {
     let payer = test_env.users.get(1).unwrap().clone();
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
 
-    let id = create_test_group(&env, &test_env.autoshare_contract, &creator, &Vec::new(&env), 1, &token);
-    
+    let id = create_test_group(
+        &env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(&env),
+        1,
+        &token,
+    );
+
     // Add a member (crucial for distribute)
     let member = Address::generate(&env);
     client.add_group_member(&id, &creator, &member, &100);
@@ -175,7 +208,7 @@ fn test_topup_subscription_works_for_exhausted_subscription() {
     let sender = test_env.users.get(2).unwrap().clone();
     mint_tokens(&env, &token, &sender, 100);
     client.distribute(&id, &token, &100, &sender);
-    
+
     assert_eq!(client.get_remaining_usages(&id), 0);
 
     // Top up
@@ -183,7 +216,7 @@ fn test_topup_subscription_works_for_exhausted_subscription() {
     client.topup_subscription(&id, &10, &token, &payer);
 
     assert_eq!(client.get_remaining_usages(&id), 10);
-    
+
     // Total distributed remains 100 (from the distribution before topup)
 }
 
@@ -193,11 +226,17 @@ fn test_topup_subscription_fails_with_insufficient_payer_balance() {
     let test_env = setup_test_env();
     let env = test_env.env;
     let token = test_env.mock_tokens.get(0).unwrap().clone();
-    let payer = test_env.users.get(0).unwrap().clone();
     let client = AutoShareContractClient::new(&env, &test_env.autoshare_contract);
 
     let creator = test_env.users.get(0).unwrap().clone();
-    let id = create_test_group(&env, &test_env.autoshare_contract, &creator, &Vec::new(&env), 5, &token);
+    let id = create_test_group(
+        &env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(&env),
+        5,
+        &token,
+    );
 
     let broke_payer = Address::generate(&env);
     // Needs 100 for 10 usages, has 0

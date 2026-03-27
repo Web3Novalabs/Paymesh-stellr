@@ -4,7 +4,7 @@ use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_token
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
 
-fn setup(env: &Env) -> (Address, Address, AutoShareContractClient) {
+fn setup(env: &Env) -> (Address, Address, AutoShareContractClient<'_>) {
     let admin = Address::generate(env);
     let contract_id = deploy_autoshare_contract(env, &admin);
     let client = AutoShareContractClient::new(env, &contract_id);
