@@ -84,6 +84,10 @@ pub trait AutoShareTrait {
         percentage: u32,
     );
 
+    /// Adds multiple members to a group in a single call.
+    /// Only the group creator (caller) may call. All existing + new percentages must sum to 100.
+    fn batch_add_members(env: Env, id: BytesN<32>, caller: Address, new_members: Vec<GroupMember>);
+
     /// Removes a single member from a group. Only the creator can call; group must be active.
     /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
     fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address);

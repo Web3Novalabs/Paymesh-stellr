@@ -417,6 +417,105 @@ pub fn add_group_member(
     Ok(())
 }
 
+pub fn batch_add_members(
+    env: Env,
+    id: BytesN<32>,
+    caller: Address,
+    new_members: Vec<GroupMember>,
+) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    if new_members.is_empty() {
+        return Err(Error::EmptyMembers);
+    }
+
+    // Check combined count won't exceed MAX_MEMBERS
+    if details.members.len() + new_members.len() > MAX_MEMBERS {
+        return Err(Error::MaxMembersExceeded);
+    }
+
+    // Validate no duplicates within new_members and against existing members
+    let mut seen: Vec<Address> = Vec::new(&env);
+    for new_member in new_members.iter() {
+        // Check against existing members
+        for existing in details.members.iter() {
+            if existing.address == new_member.address {
+                return Err(Error::DuplicateMember);
+            }
+        }
+        // Check within new_members
+        for s in seen.iter() {
+            if s == new_member.address {
+                return Err(Error::DuplicateMember);
+            }
+        }
+        seen.push_back(new_member.address.clone());
+    }
+
+    // Validate that existing percentages + new member percentages sum to exactly 100
+    let mut total: u32 = 0;
+    for m in details.members.iter() {
+        total += m.percentage;
+    }
+    for m in new_members.iter() {
+        if m.percentage == 0 {
+            return Err(Error::InvalidInput);
+        }
+        total += m.percentage;
+    }
+    if total != 100 {
+        return Err(Error::InvalidTotalPercentage);
+    }
+
+    // Append all new members and update MemberGroups index
+    for new_member in new_members.iter() {
+        details.members.push_back(new_member.clone());
+
+        let member_groups_key = DataKey::MemberGroups(new_member.address.clone());
+        let mut member_groups: Vec<BytesN<32>> = env
+            .storage()
+            .persistent()
+            .get(&member_groups_key)
+            .unwrap_or(Vec::new(&env));
+        member_groups.push_back(id.clone());
+        env.storage()
+            .persistent()
+            .set(&member_groups_key, &member_groups);
+        bump_persistent(&env, &member_groups_key);
+    }
+
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    AutoshareUpdated {
+        id: id.clone(),
+        updater: caller,
+    }
+    .publish(&env);
+
+    Ok(())
+}
+
 pub fn remove_group_member(
     env: Env,
     id: BytesN<32>,

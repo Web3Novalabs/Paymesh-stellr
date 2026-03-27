@@ -158,6 +158,17 @@ impl AutoShareContract {
         autoshare_logic::add_group_member(env, id, caller, address, percentage).unwrap();
     }
 
+    /// Adds multiple members to a group in a single call.
+    /// All existing + new percentages must sum to 100. Only the group creator (caller) may call.
+    pub fn batch_add_members(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_members: Vec<base::types::GroupMember>,
+    ) {
+        autoshare_logic::batch_add_members(env, id, caller, new_members).unwrap();
+    }
+
     /// Removes a single member from a group. Only the creator can call; group must be active.
     /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
     pub fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address) {
