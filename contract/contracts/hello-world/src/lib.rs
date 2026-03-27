@@ -174,6 +174,16 @@ impl AutoShareContract {
         autoshare_logic::update_group_name(env, id, caller, new_name).unwrap();
     }
 
+    /// Transfers group ownership (creator role) to a new address.
+    pub fn transfer_group_ownership(
+        env: Env,
+        id: BytesN<32>,
+        current_creator: Address,
+        new_creator: Address,
+    ) {
+        autoshare_logic::transfer_group_ownership(env, id, current_creator, new_creator).unwrap();
+    }
+
     /// Returns whether a group is active.
     pub fn is_group_active(env: Env, id: BytesN<32>) -> bool {
         autoshare_logic::is_group_active(env, id).unwrap()
@@ -474,3 +484,7 @@ mod event_emission_test;
 #[cfg(test)]
 #[path = "tests/delete_group_test.rs"]
 mod delete_group_test;
+
+#[cfg(test)]
+#[path = "tests/transfer_group_ownership_test.rs"]
+mod transfer_group_ownership_test;

@@ -2,7 +2,7 @@ use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_distribution, AdminTransferred, AutoshareCreated, AutoshareUpdated,
     ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated,
-    GroupDeleted, GroupNameUpdated, Withdrawal,
+    GroupDeleted, GroupNameUpdated, Withdrawal, GroupOwnershipTransferred,
 };
 
 use crate::base::types::{
@@ -983,8 +983,6 @@ pub fn get_total_usages_paid(env: Env, id: BytesN<32>) -> Result<u32, Error> {
     Ok(details.total_usages_paid)
 }
 
-#[cfg(test)]
-#[allow(dead_code)]
 pub fn reduce_usage(env: Env, id: BytesN<32>) -> Result<(), Error> {
     let key = DataKey::AutoShare(id);
     let mut details: AutoShareDetails = env
@@ -1253,6 +1251,51 @@ pub fn update_group_name(
         updater: caller,
     }
     .publish(&env);
+    Ok(())
+}
+
+pub fn transfer_group_ownership(
+    env: Env,
+    id: BytesN<32>,
+    current_creator: Address,
+    new_creator: Address,
+) -> Result<(), Error> {
+    // 1. Authorize current creator
+    current_creator.require_auth();
+
+    // 2. Check if contract is paused
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // 3. Verify group existence and creator
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    // bump persistent on read
+    bump_persistent(&env, &key);
+
+    if details.creator != current_creator {
+        return Err(Error::Unauthorized);
+    }
+
+    // 4. Update group creator
+    let old_creator = details.creator.clone();
+    details.creator = new_creator.clone();
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    // 5. Emit transfer event
+    GroupOwnershipTransferred {
+        group_id: id,
+        old_creator,
+        new_creator,
+    }
+    .publish(&env);
+
     Ok(())
 }
 
