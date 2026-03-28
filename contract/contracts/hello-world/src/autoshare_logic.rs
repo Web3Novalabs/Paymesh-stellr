@@ -1,11 +1,9 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_creator_is_member, emit_distribution,
-    emit_fundraising_reset, emit_fundraising_target_updated,
-    emit_max_members_updated, AdminTransferred, AutoshareCreated,
-    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
-    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated,
-    GroupOwnershipTransferred, Withdrawal,
+    emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_target_updated,
+    emit_max_members_updated, AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused,
+    ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
+    GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
@@ -869,7 +867,7 @@ pub fn get_max_members(env: &Env) -> u32 {
         .storage()
         .persistent()
         .get(&key)
-        .unwrap_or(DEFAULT_MAX_MEMBERS);
+        .unwrap_or(MAX_MEMBERS);
     if env.storage().persistent().has(&key) {
         bump_persistent(env, &key);
     }

@@ -493,7 +493,7 @@ impl AutoShareContract {
     pub fn set_fundraising_target(env: Env, id: BytesN<32>, caller: Address, new_target: i128) {
         autoshare_logic::set_fundraising_target(env, id, caller, new_target).unwrap();
     }
-    
+
     /// Sets the minimum contribution amount for fundraising (admin only). 0 = no minimum.
     pub fn set_min_contribution(env: Env, admin: Address, min_amount: i128) {
         autoshare_logic::set_min_contribution(env, admin, min_amount).unwrap();
@@ -614,6 +614,7 @@ mod fundraising_reset_test;
 #[path = "tests/issue_implementations_test.rs"]
 mod issue_implementations_test;
 
+#[cfg(test)]
 #[path = "tests/group_name_validation_test.rs"]
 mod group_name_validation_test;
 

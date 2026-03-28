@@ -1,5 +1,6 @@
+#![cfg(test)]
 use crate::base::types::GroupMember;
-use crate::test_utils::{create_test_group, setup_test_env};
+use crate::test_utils::{create_test_group, mint_tokens, setup_test_env};
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, String, Vec};
 
@@ -10,7 +11,7 @@ fn test_name_at_minimum_length() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[1u8; 32]);
     let name = String::from_str(&test_env.env, "A");
@@ -28,7 +29,7 @@ fn test_name_at_maximum_length() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[2u8; 32]);
     let name = String::from_str(
@@ -50,7 +51,7 @@ fn test_name_exceeding_max_length() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[3u8; 32]);
     let name = String::from_str(
@@ -69,7 +70,7 @@ fn test_empty_name_returns_error() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[4u8; 32]);
     let name = String::from_str(&test_env.env, "");
@@ -85,7 +86,7 @@ fn test_whitespace_only_name_returns_error() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[5u8; 32]);
     let name = String::from_str(&test_env.env, "     ");
@@ -100,7 +101,7 @@ fn test_name_with_leading_trailing_spaces() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[6u8; 32]);
     let name = String::from_str(&test_env.env, "  Test Group  ");
@@ -118,7 +119,7 @@ fn test_name_with_special_characters() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[7u8; 32]);
     let name = String::from_str(&test_env.env, "Test@Group#2024!");
@@ -136,7 +137,7 @@ fn test_name_with_only_numbers() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[8u8; 32]);
     let name = String::from_str(&test_env.env, "123456789");
@@ -212,7 +213,7 @@ fn test_name_with_newlines() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[9u8; 32]);
     let name = String::from_str(&test_env.env, "Test\nGroup");
@@ -227,7 +228,7 @@ fn test_name_with_tabs() {
     let creator = test_env.users.get(0).unwrap();
     let token = test_env.mock_tokens.get(0).unwrap();
 
-    crate::test_utils::mint_tokens(&test_env.env, &token, &creator, 10000);
+    mint_tokens(&test_env.env, &token, &creator, 10000);
 
     let id = BytesN::from_array(&test_env.env, &[10u8; 32]);
     let name = String::from_str(&test_env.env, "Test\tGroup");
