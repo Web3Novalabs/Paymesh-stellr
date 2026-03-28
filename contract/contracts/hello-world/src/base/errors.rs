@@ -29,6 +29,7 @@ pub enum Error {
     GroupNotDeactivated = 23,
     EmptyName = 24,
     MaxMembersExceeded = 25,
+    InvalidTarget = 26,
     FundraisingAlreadyActive = 32,
     FundraisingNotActive = 33,
     GroupHasActiveFundraising = 34,

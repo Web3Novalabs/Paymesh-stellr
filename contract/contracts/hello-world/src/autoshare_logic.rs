@@ -1,8 +1,10 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_reset,
-    AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated,
+    emit_contribution, emit_creator_is_member, emit_distribution,
+    emit_fundraising_reset, emit_fundraising_target_updated,
+    emit_max_members_updated, AdminTransferred, AutoshareCreated,
+    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
+    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated,
     GroupOwnershipTransferred, Withdrawal,
 };
 
@@ -36,6 +38,7 @@ pub enum DataKey {
     IsPaused,
     MemberGroups(Address),
     GroupDistributions(BytesN<32>),
+    MaxMembers,
     MinContribution,
 }
 
@@ -339,6 +342,16 @@ pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, E
     Ok(details.members)
 }
 
+pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {
+    let details = get_autoshare(env, id)?;
+    for m in details.members.iter() {
+        if m.address == member {
+            return Ok(m.percentage);
+        }
+    }
+    Err(Error::MemberNotFound)
+}
+
 pub fn add_group_member(
     env: Env,
     id: BytesN<32>,
@@ -377,8 +390,8 @@ pub fn add_group_member(
         }
     }
 
-    // Check if adding this member would exceed MAX_MEMBERS
-    if details.members.len() >= MAX_MEMBERS {
+    // Check if adding this member would exceed the max members limit
+    if details.members.len() >= get_max_members(&env) {
         return Err(Error::MaxMembersExceeded);
     }
 
@@ -455,8 +468,8 @@ pub fn batch_add_members(
         return Err(Error::EmptyMembers);
     }
 
-    // Check combined count won't exceed MAX_MEMBERS
-    if details.members.len() + new_members.len() > MAX_MEMBERS {
+    // Check combined count won't exceed the configured max members
+    if details.members.len() + new_members.len() > get_max_members(&env) {
         return Err(Error::MaxMembersExceeded);
     }
 
@@ -831,6 +844,36 @@ pub fn get_usage_fee(env: Env) -> u32 {
         bump_persistent(&env, &fee_key);
     }
     result.unwrap_or(10u32)
+}
+
+pub fn set_max_members(env: Env, admin: Address, max: u32) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    if max == 0 {
+        return Err(Error::InvalidInput);
+    }
+
+    let old_max = get_max_members(&env);
+    let key = DataKey::MaxMembers;
+    env.storage().persistent().set(&key, &max);
+    bump_persistent(&env, &key);
+
+    emit_max_members_updated(&env, old_max, max);
+    Ok(())
+}
+
+pub fn get_max_members(env: &Env) -> u32 {
+    let key = DataKey::MaxMembers;
+    let max: u32 = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(DEFAULT_MAX_MEMBERS);
+    if env.storage().persistent().has(&key) {
+        bump_persistent(env, &key);
+    }
+    max
 }
 
 pub fn set_min_contribution(env: Env, admin: Address, min_amount: i128) -> Result<(), Error> {
@@ -1237,7 +1280,7 @@ pub fn update_members(
     }
 
     // Check if new members count exceeds MAX_MEMBERS
-    if new_members.len() > MAX_MEMBERS {
+    if new_members.len() > get_max_members(&env) {
         return Err(Error::MaxMembersExceeded);
     }
 
@@ -2392,7 +2435,62 @@ pub fn reset_fundraising(env: Env, id: BytesN<32>, caller: Address) -> Result<()
     }
 
     // 7. Emit reset event
-    emit_fundraising_reset(&env, id);
+    Ok(())
+}
+
+pub fn set_fundraising_target(
+    env: Env,
+    id: BytesN<32>,
+    caller: Address,
+    new_target: i128,
+) -> Result<(), Error> {
+    caller.require_auth();
+
+    // Check if contract is paused
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // Verify creator
+    let autoshare_key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&autoshare_key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &autoshare_key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    // Verify fundraising is active
+    let config_key = DataKey::GroupFundraising(id.clone());
+    let mut config: FundraisingConfig = env
+        .storage()
+        .persistent()
+        .get(&config_key)
+        .ok_or(Error::FundraisingNotActive)?;
+    bump_persistent(&env, &config_key);
+
+    if !config.is_active {
+        return Err(Error::FundraisingNotActive);
+    }
+
+    // Validate new target
+    if new_target <= 0 || new_target <= config.total_raised {
+        return Err(Error::InvalidTarget);
+    }
+
+    let old_target = config.target_amount;
+    config.target_amount = new_target;
+
+    // Store back
+    env.storage().persistent().set(&config_key, &config);
+    bump_persistent(&env, &config_key);
+
+    // Emit event
+    emit_fundraising_target_updated(&env, id, old_target, new_target);
 
     Ok(())
 }

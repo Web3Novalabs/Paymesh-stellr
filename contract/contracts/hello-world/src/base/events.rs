@@ -162,6 +162,29 @@ pub struct FundraisingStarted {
 
 #[contractevent]
 #[derive(Clone)]
+pub struct FundraisingTargetUpdated {
+    #[topic]
+    pub group_id: BytesN<32>,
+    pub old_target: i128,
+    pub new_target: i128,
+}
+
+pub fn emit_fundraising_target_updated(
+    env: &Env,
+    group_id: BytesN<32>,
+    old_target: i128,
+    new_target: i128,
+) {
+    FundraisingTargetUpdated {
+        group_id,
+        old_target,
+        new_target,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+#[derive(Clone)]
 pub struct Contribution {
     #[topic]
     pub group_id: BytesN<32>,
@@ -244,4 +267,15 @@ pub struct FundraisingReset {
 
 pub fn emit_fundraising_reset(env: &Env, id: BytesN<32>) {
     FundraisingReset { id }.publish(env);
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct MaxMembersUpdated {
+    pub old_max: u32,
+    pub new_max: u32,
+}
+
+pub fn emit_max_members_updated(env: &Env, old_max: u32, new_max: u32) {
+    MaxMembersUpdated { old_max, new_max }.publish(env);
 }
