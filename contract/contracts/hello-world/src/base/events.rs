@@ -279,3 +279,21 @@ pub struct MaxMembersUpdated {
 pub fn emit_max_members_updated(env: &Env, old_max: u32, new_max: u32) {
     MaxMembersUpdated { old_max, new_max }.publish(env);
 }
+
+#[contractevent]
+#[derive(Clone)]
+pub struct UsageFeeUpdated {
+    #[topic]
+    pub admin: Address,
+    pub old_fee: u32,
+    pub new_fee: u32,
+}
+
+pub fn emit_usage_fee_updated(env: &Env, admin: Address, old_fee: u32, new_fee: u32) {
+    UsageFeeUpdated {
+        admin,
+        old_fee,
+        new_fee,
+    }
+    .publish(env);
+}

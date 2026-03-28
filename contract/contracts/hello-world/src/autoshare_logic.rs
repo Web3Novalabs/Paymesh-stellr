@@ -1,9 +1,9 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_target_updated,
-    emit_max_members_updated, AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused,
-    ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
-    GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_max_members_updated, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
+    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
+    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
@@ -829,9 +829,12 @@ pub fn set_usage_fee(env: Env, fee: u32, admin: Address) -> Result<(), Error> {
         return Err(Error::InvalidAmount);
     }
 
+    let old_fee = get_usage_fee(env.clone());
     let fee_key = DataKey::UsageFee;
     env.storage().persistent().set(&fee_key, &fee);
     bump_persistent(&env, &fee_key);
+
+    emit_usage_fee_updated(&env, admin, old_fee, fee);
     Ok(())
 }
 
