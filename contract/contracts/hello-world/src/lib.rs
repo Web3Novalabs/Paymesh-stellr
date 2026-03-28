@@ -47,6 +47,11 @@ impl AutoShareContract {
         autoshare_logic::get_paused_status(&env)
     }
 
+    /// Returns the current contract version.
+    pub fn get_contract_version(env: Env) -> u32 {
+        autoshare_logic::get_contract_version(env)
+    }
+
     /// Admin-only tool to force-delete any group.
     pub fn admin_delete_group(env: Env, admin: Address, id: BytesN<32>) {
         autoshare_logic::admin_delete_group(env, admin, id).unwrap();
@@ -135,6 +140,16 @@ impl AutoShareContract {
     /// Returns the total number of groups.
     pub fn get_group_count(env: Env) -> u32 {
         autoshare_logic::get_group_count(env)
+    }
+
+    /// Returns groups by active/inactive status.
+    pub fn get_groups_by_status_paginated(
+        env: Env,
+        is_active: bool,
+        offset: u32,
+        limit: u32,
+    ) -> crate::base::types::GroupPage {
+        autoshare_logic::get_groups_by_status_paginated(env, is_active, offset, limit)
     }
 
     /// Checks if an address is a member of a specific group.
@@ -319,6 +334,26 @@ impl AutoShareContract {
         autoshare_logic::get_group_payment_history(env, id)
     }
 
+    /// Returns paginated payment history for a user.
+    pub fn get_user_pay_history_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::PaymentHistory>, u32) {
+        autoshare_logic::get_user_pay_history_paginated(env, user, offset, limit)
+    }
+
+    /// Returns paginated payment history for a group.
+    pub fn get_group_pay_history_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::PaymentHistory>, u32) {
+        autoshare_logic::get_group_pay_history_paginated(env, id, offset, limit)
+    }
+
     // ============================================================================
     // Distribution History
     // ============================================================================
@@ -382,6 +417,26 @@ impl AutoShareContract {
         user: Address,
     ) -> Vec<base::types::FundraisingContribution> {
         autoshare_logic::get_user_contributions(env, user)
+    }
+
+    /// Returns paginated contributions for a specific group.
+    pub fn get_group_contribs_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::FundraisingContribution>, u32) {
+        autoshare_logic::get_group_contribs_paginated(env, id, offset, limit)
+    }
+
+    /// Returns paginated contributions made by a specific user.
+    pub fn get_user_contribs_paginated(
+        env: Env,
+        user: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::FundraisingContribution>, u32) {
+        autoshare_logic::get_user_contribs_paginated(env, user, offset, limit)
     }
 
     /// Starts a fundraising campaign for a group.
@@ -484,8 +539,16 @@ mod earnings_test;
 mod pagination_test;
 
 #[cfg(test)]
+#[path = "tests/payment_pagination_test.rs"]
+mod payment_pagination_test;
+
+#[cfg(test)]
 #[path = "tests/fundraising_test.rs"]
 mod fundraising_test;
+
+#[cfg(test)]
+#[path = "tests/fundraising_pagination_test.rs"]
+mod fundraising_pagination_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_start_test.rs"]
@@ -549,3 +612,7 @@ mod issue_implementations_test;
 
 #[path = "tests/group_name_validation_test.rs"]
 mod group_name_validation_test;
+
+#[cfg(test)]
+#[path = "tests/withdraw_test.rs"]
+mod withdraw_test;

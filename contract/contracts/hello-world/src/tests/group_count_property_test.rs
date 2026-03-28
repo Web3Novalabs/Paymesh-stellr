@@ -157,7 +157,13 @@ mod property_tests {
                 // Deactivate the group first (required for deletion)
                 client.deactivate_group(&id, &creator);
 
-                // Delete the group (allowed even with remaining usages)
+                // Reduce all usages to 0 (required for deletion)
+                let remaining = client.get_remaining_usages(&id);
+                for _ in 0..remaining {
+                    client.reduce_usage(&id);
+                }
+
+                // Delete the group
                 client.delete_group(&id, &creator);
                 expected_count -= 1;
 
