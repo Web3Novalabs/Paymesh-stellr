@@ -339,6 +339,16 @@ pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, E
     Ok(details.members)
 }
 
+pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {
+    let details = get_autoshare(env, id)?;
+    for m in details.members.iter() {
+        if m.address == member {
+            return Ok(m.percentage);
+        }
+    }
+    Err(Error::MemberNotFound)
+}
+
 pub fn add_group_member(
     env: Env,
     id: BytesN<32>,

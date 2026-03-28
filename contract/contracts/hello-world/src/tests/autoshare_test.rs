@@ -592,6 +592,78 @@ fn test_get_group_members_non_existent_group() {
     client.get_group_members(&id);
 }
 
+#[test]
+fn test_get_member_percentage_success() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let member1 = Address::generate(&test_env.env);
+    let member2 = Address::generate(&test_env.env);
+
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 60,
+    });
+    members.push_back(GroupMember {
+        address: member2.clone(),
+        percentage: 40,
+    });
+
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+    let id = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+
+    assert_eq!(client.get_member_percentage(&id, &member1), 60);
+    assert_eq!(client.get_member_percentage(&id, &member2), 40);
+}
+
+#[test]
+#[should_panic] // MemberNotFound
+fn test_get_member_percentage_member_not_found() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let creator = test_env.users.get(0).unwrap().clone();
+    let member = Address::generate(&test_env.env);
+    let mut members = Vec::new(&test_env.env);
+    members.push_back(GroupMember {
+        address: member.clone(),
+        percentage: 100,
+    });
+    let token = test_env.mock_tokens.get(0).unwrap().clone();
+
+    let id = create_test_group(
+        &test_env.env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+
+    let non_member = Address::generate(&test_env.env);
+    client.get_member_percentage(&id, &non_member);
+}
+
+#[test]
+#[should_panic] // NotFound (Group not found)
+fn test_get_member_percentage_group_not_found() {
+    let test_env = setup_test_env();
+    let client = AutoShareContractClient::new(&test_env.env, &test_env.autoshare_contract);
+
+    let id = BytesN::from_array(&test_env.env, &[99u8; 32]);
+    let member = Address::generate(&test_env.env);
+    client.get_member_percentage(&id, &member);
+}
+
 // ============================================
 // Add Group Member Tests
 // ============================================

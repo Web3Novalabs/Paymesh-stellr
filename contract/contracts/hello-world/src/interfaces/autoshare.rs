@@ -85,6 +85,9 @@ pub trait AutoShareTrait {
     /// Returns all members of a group.
     fn get_group_members(env: Env, id: BytesN<32>) -> Vec<GroupMember>;
 
+    /// Returns a specific member's share (percentage) in a group.
+    fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32;
+
     /// Adds a member to a group with specified percentage.
     /// Only the group creator (caller) may add members.
     fn add_group_member(
