@@ -863,11 +863,7 @@ pub fn set_max_members(env: Env, admin: Address, max: u32) -> Result<(), Error> 
 
 pub fn get_max_members(env: &Env) -> u32 {
     let key = DataKey::MaxMembers;
-    let max: u32 = env
-        .storage()
-        .persistent()
-        .get(&key)
-        .unwrap_or(MAX_MEMBERS);
+    let max: u32 = env.storage().persistent().get(&key).unwrap_or(MAX_MEMBERS);
     if env.storage().persistent().has(&key) {
         bump_persistent(env, &key);
     }
