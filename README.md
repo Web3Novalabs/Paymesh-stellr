@@ -2,7 +2,7 @@
 
 Paymesh automates group payment distribution using Stellar smart contracts. Create a group, set wallet addresses with specific percentages, and any payment sent to your group address automatically splits and distributes funds instantly, no manual calculations, no delayed transfers, complete transparency. Built by Africans to tackle payment problems with a solution that's Simple, Seamless, and Secure
 
-## What it does
+## What it does?
 
 Paymesh is a decentralized payment platform that automates group payment distribution:
 
