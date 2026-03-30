@@ -92,6 +92,14 @@ impl AutoShareContract {
         autoshare_logic::get_autoshare(env, id).unwrap()
     }
 
+    /// Retrieves a lightweight group summary with commonly needed info.
+    /// Returns a single struct with: id, name, creator, member_count, is_active,
+    /// remaining_usages, has_active_fundraising, and total_distributions.
+    /// This reduces the number of RPC calls needed for group cards in the frontend.
+    pub fn get_group_summary(env: Env, id: BytesN<32>) -> base::types::GroupSummary {
+        autoshare_logic::get_group_summary(env, id).unwrap()
+    }
+
     /// Retrieves all AutoShare groups.
     pub fn get_all_groups(env: Env) -> Vec<base::types::AutoShareDetails> {
         autoshare_logic::get_all_groups(env)
