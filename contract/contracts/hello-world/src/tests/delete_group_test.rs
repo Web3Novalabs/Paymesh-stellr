@@ -518,3 +518,313 @@ fn test_admin_delete_group_force_delete() {
     // Verify attempting to get it fails
     // (get returns Error::NotFound if missing)
 }
+
+#[test]
+fn test_delete_group_with_multiple_members_cleanup() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let member1 = Address::generate(&env);
+    let member2 = Address::generate(&env);
+    let member3 = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[20u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Add multiple members
+    client.add_group_member(&group_id, &creator, &member1, &100);
+    client.add_group_member(&group_id, &creator, &member2, &200);
+    client.add_group_member(&group_id, &creator, &member3, &300);
+
+    // Verify all members have the group in their index
+    assert!(client.get_groups_by_member(&member1).iter().any(|g| g.id == group_id));
+    assert!(client.get_groups_by_member(&member2).iter().any(|g| g.id == group_id));
+    assert!(client.get_groups_by_member(&member3).iter().any(|g| g.id == group_id));
+
+    // Deactivate and delete
+    client.deactivate_group(&group_id, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&group_id);
+    }
+    client.delete_group(&group_id, &creator);
+
+    // Verify group is removed from all members' indexes
+    assert!(!client.get_groups_by_member(&member1).iter().any(|g| g.id == group_id));
+    assert!(!client.get_groups_by_member(&member2).iter().any(|g| g.id == group_id));
+    assert!(!client.get_groups_by_member(&member3).iter().any(|g| g.id == group_id));
+}
+
+#[test]
+fn test_delete_group_after_fundraising_completed() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let contributor = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[21u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Start and complete fundraising
+    let goal = 1000i128;
+    client.start_fundraising(&group_id, &creator, &goal);
+    
+    // Contribute to reach goal
+    mint_tokens(&env, &token_id, &contributor, goal);
+    client.contribute_to_fundraising(&group_id, &contributor, &token_id, &goal);
+
+    // Reset fundraising (makes it inactive)
+    client.reset_fundraising(&group_id, &creator);
+    
+    // Verify fundraising is now inactive
+    assert!(!client.get_fundraising_status(&group_id).is_active);
+
+    // Deactivate and delete
+    client.deactivate_group(&group_id, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&group_id);
+    }
+    
+    // Should succeed since fundraising is inactive
+    client.delete_group(&group_id, &creator);
+
+    // Verify group is deleted
+    let all_groups = client.get_all_groups();
+    assert!(!all_groups.iter().any(|g| g.id == group_id));
+}
+
+#[test]
+fn test_delete_group_with_zero_initial_usages() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group with 0 usages
+    let group_id = BytesN::from_array(&env, &[22u8; 32]);
+    let name = String::from_str(&env, "Zero Usage Group");
+    let fee = 0;
+    let amount = 10000;
+    mint_tokens(&env, &token_id, &creator, amount);
+    client.create(&group_id, &name, &creator, &fee, &token_id);
+
+    // Verify group has 0 usages
+    assert_eq!(client.get_remaining_usages(&group_id), 0);
+
+    // Deactivate the group
+    client.deactivate_group(&group_id, &creator);
+
+    // Should be able to delete immediately since usages are already 0
+    client.delete_group(&group_id, &creator);
+
+    // Verify deletion
+    let all_groups = client.get_all_groups();
+    assert!(!all_groups.iter().any(|g| g.id == group_id));
+}
+
+#[test]
+fn test_admin_delete_bypasses_deactivation_requirement() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create an active group
+    let group_id = BytesN::from_array(&env, &[23u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Verify group is active
+    assert!(client.is_group_active(&group_id));
+    assert_eq!(client.get_remaining_usages(&group_id), 10);
+
+    // Admin can delete without deactivating or reducing usages
+    client.admin_delete_group(&admin, &group_id);
+
+    // Verify group is deleted
+    let all_groups = client.get_all_groups();
+    assert!(!all_groups.iter().any(|g| g.id == group_id));
+}
+
+#[test]
+fn test_delete_group_event_emission() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[24u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Deactivate and prepare for deletion
+    client.deactivate_group(&group_id, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&group_id);
+    }
+
+    // Delete the group
+    client.delete_group(&group_id, &creator);
+
+    // Verify GroupDeleted event was emitted
+    let events = env.events().all();
+    let delete_events: Vec<_> = events
+        .iter()
+        .filter(|e| {
+            e.topics.len() > 0 && 
+            e.topics.get(0).unwrap().to_string().contains("GroupDeleted")
+        })
+        .collect();
+    
+    assert!(delete_events.len() > 0, "GroupDeleted event should be emitted");
+}
+
+#[test]
+fn test_delete_group_with_distributions_and_earnings() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let member1 = Address::generate(&env);
+    let member2 = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[25u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Add members with different shares
+    client.add_group_member(&group_id, &creator, &member1, &400);
+    client.add_group_member(&group_id, &creator, &member2, &600);
+
+    // Perform multiple distributions
+    let distribute_amount1 = 2000i128;
+    let distribute_amount2 = 3000i128;
+    
+    mint_tokens(&env, &token_id, &creator, distribute_amount1 + distribute_amount2);
+    client.distribute(&group_id, &token_id, &distribute_amount1, &creator);
+    client.distribute(&group_id, &token_id, &distribute_amount2, &creator);
+
+    // Verify distributions and earnings exist
+    let distributions_before = client.get_group_distributions(&group_id);
+    assert_eq!(distributions_before.len(), 2);
+    
+    let member1_earnings_before = client.get_member_earnings(&member1, &group_id);
+    let member2_earnings_before = client.get_member_earnings(&member2, &group_id);
+    assert!(member1_earnings_before > 0);
+    assert!(member2_earnings_before > 0);
+
+    // Deactivate and delete
+    client.deactivate_group(&group_id, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&group_id);
+    }
+    client.delete_group(&group_id, &creator);
+
+    // Verify distributions and earnings are preserved after deletion
+    let distributions_after = client.get_group_distributions(&group_id);
+    assert_eq!(distributions_after.len(), 2);
+    
+    let member1_earnings_after = client.get_member_earnings(&member1, &group_id);
+    let member2_earnings_after = client.get_member_earnings(&member2, &group_id);
+    assert_eq!(member1_earnings_after, member1_earnings_before);
+    assert_eq!(member2_earnings_after, member2_earnings_before);
+}
+
+#[test]
+#[should_panic(expected = "NotFound")]
+fn test_delete_already_deleted_group() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let creator = Address::generate(&env);
+    let contract_id = deploy_autoshare_contract(&env, &admin);
+    let token_name = String::from_str(&env, "Test Token");
+    let token_symbol = String::from_str(&env, "TEST");
+    let token_id = deploy_mock_token(&env, &token_name, &token_symbol);
+
+    let client = crate::AutoShareContractClient::new(&env, &contract_id);
+
+    client.initialize_admin(&admin);
+    client.add_supported_token(&token_id, &admin);
+
+    // Create a group
+    let group_id = BytesN::from_array(&env, &[26u8; 32]);
+    create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
+
+    // Deactivate and delete the group
+    client.deactivate_group(&group_id, &creator);
+    for _ in 0..10 {
+        client.reduce_usage(&group_id);
+    }
+    client.delete_group(&group_id, &creator);
+
+    // Verify group is deleted
+    let all_groups = client.get_all_groups();
+    assert!(!all_groups.iter().any(|g| g.id == group_id));
+
+    // Try to delete the same group again - should fail with NotFound
+    client.delete_group(&group_id, &creator);
+}
