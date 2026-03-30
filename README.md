@@ -1,6 +1,8 @@
 # Paymesh: Revolutionizing payments on Stellar 🔥🔥
 
-Paymesh automates group payment distribution using Stellar smart contracts. Create a group, set wallet addresses with specific percentages, and any payment sent to your group address automatically splits and distributes funds instantly, no manual calculations, no delayed transfers, complete transparency. Built by Africans to tackle payment problems with a solution that's Simple, Seamless, and Secure
+## 🌍 Built for Africa 🚀
+
+Solving payment problems with African innovation. Paymesh automates group payment distribution using Stellar smart contracts. Create a group, set wallet addresses with specific percentages, and any payment sent to your group address automatically splits and distributes funds instantly, no manual calculations, no delayed transfers, complete transparency. Built by Africans to tackle payment problems with a solution that's Simple, Seamless, and Secure
 
 ## What it does?
 
