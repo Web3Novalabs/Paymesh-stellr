@@ -110,3 +110,16 @@ pub struct ActiveFundraising {
     pub group_id: BytesN<32>,
     pub config: FundraisingConfig,
 }
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GroupSummary {
+    pub id: BytesN<32>,
+    pub name: String,
+    pub creator: Address,
+    pub member_count: u32,
+    pub is_active: bool,
+    pub remaining_usages: u32,
+    pub has_active_fundraising: bool,
+    pub total_distributions: u32,
+}
