@@ -9,8 +9,8 @@ use crate::base::events::{
 
 use crate::base::types::{
     ActiveFundraising, AutoShareDetails, DistributionHistory, DistributionRecord,
-    FundraisingConfig, FundraisingContribution, GroupMember, GroupPage, GroupStats, MemberAmount,
-    MemberDistributionRecord, PaymentHistory,
+    FundraisingConfig, FundraisingContribution, GroupMember, GroupPage, GroupStats, GroupSummary,
+    MemberAmount, MemberDistributionRecord, PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -177,6 +177,54 @@ pub fn get_autoshare(env: Env, id: BytesN<32>) -> Result<AutoShareDetails, Error
         bump_persistent(&env, &key);
     }
     result.ok_or(Error::NotFound)
+}
+
+pub fn get_group_summary(env: Env, id: BytesN<32>) -> Result<GroupSummary, Error> {
+    use crate::base::types::GroupSummary;
+
+    // Get basic group info
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    // Get fundraising status
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    let has_active_fundraising = env
+        .storage()
+        .persistent()
+        .get::<_, FundraisingConfig>(&fundraising_key)
+        .map(|f| f.is_active)
+        .unwrap_or(false);
+    if env.storage().persistent().has(&fundraising_key) {
+        bump_persistent(&env, &fundraising_key);
+    }
+
+    // Get distribution count
+    let dist_key = DataKey::GroupDistributionHistory(id.clone());
+    let total_distributions = env
+        .storage()
+        .persistent()
+        .get::<_, Vec<DistributionHistory>>(&dist_key)
+        .map(|d| d.len() as u32)
+        .unwrap_or(0);
+    if env.storage().persistent().has(&dist_key) {
+        bump_persistent(&env, &dist_key);
+    }
+
+    Ok(GroupSummary {
+        id,
+        name: details.name,
+        creator: details.creator,
+        member_count: details.members.len() as u32,
+        is_active: details.is_active,
+        remaining_usages: details.usage_count,
+        has_active_fundraising,
+        total_distributions,
+    })
 }
 
 fn get_all_group_ids(env: &Env) -> Vec<BytesN<32>> {
