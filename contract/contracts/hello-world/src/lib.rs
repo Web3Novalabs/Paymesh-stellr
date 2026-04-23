@@ -92,10 +92,38 @@ impl AutoShareContract {
         autoshare_logic::get_autoshare(env, id).unwrap()
     }
 
-    /// Retrieves a lightweight group summary with commonly needed info.
-    /// Returns a single struct with: id, name, creator, member_count, is_active,
-    /// remaining_usages, has_active_fundraising, and total_distributions.
-    /// This reduces the number of RPC calls needed for group cards in the frontend.
+    /// Retrieves a lightweight summary of payment group metadata, status, and statistics.
+    ///
+    /// This function provides efficient access to essential group information for
+    /// frontend displays and status checks. Returns a `GroupSummary` struct containing
+    /// id, name, creator, member count, active status, remaining usages,
+    /// fundraising status, and total distributions processed.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    /// * `id` - The unique identifier of the AutoShare payment group
+    ///
+    /// # Returns
+    ///
+    /// Returns a `GroupSummary` struct with all essential group metadata.
+    ///
+    /// # Authorization
+    ///
+    /// Public read operation - no authorization required.
+    ///
+    /// # Performance
+    ///
+    /// Optimized for low-latency group listings and status displays.
+    /// Reduces RPC calls needed for group cards in frontend applications.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying storage operation fails (group not found).
+    ///
+    /// # See Also
+    ///
+    /// `get()` - Returns complete group details including full member list
     pub fn get_group_summary(env: Env, id: BytesN<32>) -> base::types::GroupSummary {
         autoshare_logic::get_group_summary(env, id).unwrap()
     }

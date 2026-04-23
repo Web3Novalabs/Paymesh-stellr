@@ -62,6 +62,13 @@ pub trait AutoShareTrait {
     /// Retrieves an existing AutoShare plan.
     fn get(env: Env, id: BytesN<32>) -> AutoShareDetails;
 
+    /// Retrieves a lightweight summary of group metadata, status, and statistics.
+    ///
+    /// Returns essential group information for efficient frontend displays and
+    /// status checks. Includes member count, active status, fundraising status,
+    /// and distribution statistics without loading full member details.
+    fn get_group_summary(env: Env, id: BytesN<32>) -> crate::base::types::GroupSummary;
+
     /// Retrieves all AutoShare groups.
     fn get_all_groups(env: Env) -> Vec<AutoShareDetails>;
 

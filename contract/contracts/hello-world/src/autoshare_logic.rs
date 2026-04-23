@@ -179,6 +179,87 @@ pub fn get_autoshare(env: Env, id: BytesN<32>) -> Result<AutoShareDetails, Error
     result.ok_or(Error::NotFound)
 }
 
+/// Retrieves a lightweight summary of payment group metadata, status, and statistics.
+///
+/// This function provides efficient access to commonly requested group information
+/// without loading the full group details and member list. It's designed to reduce
+/// RPC calls for frontend components that need group cards or summary displays.
+/// The returned `GroupSummary` contains essential metadata for group listings,
+/// status indicators, and basic statistics.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment providing access to persistent storage
+/// * `id` - The unique 32-byte identifier of the AutoShare payment group
+///
+/// # Returns
+///
+/// Returns `Result<GroupSummary, Error>` containing a lightweight group summary struct
+/// with the following fields:
+/// - `id`: The group identifier
+/// - `name`: Human-readable group name
+/// - `creator`: Address of the group creator
+/// - `member_count`: Number of active members in the group
+/// - `is_active`: Whether the group is active and accepting operations
+/// - `remaining_usages`: Number of remaining payment distributions allowed
+/// - `has_active_fundraising`: Whether the group has an active fundraising campaign
+/// - `total_distributions`: Total number of payment distributions processed
+///
+/// # Events Emitted
+///
+/// This function does not emit any events as it is a read-only operation.
+///
+/// # Authorization
+///
+/// No authorization is required - this is a public read operation accessible to all addresses.
+///
+/// # Storage Access
+///
+/// * **Reads**: `AutoShare(id)` - Core group details (required)
+/// * **Reads**: `GroupFundraising(id)` - Fundraising status (optional)
+/// * **Reads**: `GroupDistributionHistory(id)` - Distribution count (optional)
+/// * **TTL Extension**: Extends TTL for all accessed persistent storage entries
+///
+/// # Performance Characteristics
+///
+/// * **Time Complexity**: O(1) - Constant time lookups with bounded data sizes
+/// * **Storage Operations**: 1-3 persistent reads depending on optional data
+/// * **Memory Usage**: Minimal - only loads summary data, not full member lists
+/// * **Network Efficiency**: Single RPC call returns all summary information
+///
+/// # Error Conditions
+///
+/// * `NotFound` - The specified group ID does not exist in storage
+///
+/// # Use Cases
+///
+/// This function is optimized for:
+/// - Group listing displays in frontend applications
+/// - Status indicators and badges
+/// - Quick group information lookups
+/// - Reducing RPC call frequency for UI components
+/// - Group search and filtering operations
+///
+/// # Related Functions
+///
+/// * `get()` - Returns full group details including complete member list
+/// * `get_group_members()` - Returns only the member list
+/// * `is_group_active()` - Returns only the active status
+///
+/// # Example
+///
+/// ```ignore
+/// // Get summary for efficient group display
+/// let summary = get_group_summary(env, group_id)?;
+///
+/// // Use summary data for UI rendering
+/// display_group_card(
+///     summary.name,
+///     summary.member_count,
+///     summary.is_active,
+///     summary.has_active_fundraising
+/// );
+/// ```
 pub fn get_group_summary(env: Env, id: BytesN<32>) -> Result<GroupSummary, Error> {
     use crate::base::types::GroupSummary;
 
