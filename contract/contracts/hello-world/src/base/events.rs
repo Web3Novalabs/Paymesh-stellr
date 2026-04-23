@@ -159,10 +159,26 @@ pub struct MemberRemoved {
     pub group_id: BytesN<32>,
     #[topic]
     pub member: Address,
+    /// The percentage share held by the member at the time of removal.
+    pub removed_percentage: u32,
+    /// Cumulative earnings accrued by the member in this group at the time of removal.
+    pub pending_earnings: i128,
 }
 
-pub fn emit_member_removed(env: &Env, group_id: BytesN<32>, member: Address) {
-    MemberRemoved { group_id, member }.publish(env);
+pub fn emit_member_removed(
+    env: &Env,
+    group_id: BytesN<32>,
+    member: Address,
+    removed_percentage: u32,
+    pending_earnings: i128,
+) {
+    MemberRemoved {
+        group_id,
+        member,
+        removed_percentage,
+        pending_earnings,
+    }
+    .publish(env);
 }
 
 #[contractevent(data_format = "single-value")]

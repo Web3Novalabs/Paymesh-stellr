@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::test_utils::{create_test_members, create_test_group, setup_test_env};
+use crate::test_utils::{create_test_group, create_test_members, setup_test_env};
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN};
 

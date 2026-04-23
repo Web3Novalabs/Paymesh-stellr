@@ -7,10 +7,22 @@ use soroban_sdk::{testutils::Address as _, Address, Vec};
 // Helper: build a two-member Vec summing to 100%
 // ============================================================================
 
-fn two_members(env: &soroban_sdk::Env, a: &Address, pct_a: u32, b: &Address, pct_b: u32) -> Vec<GroupMember> {
+fn two_members(
+    env: &soroban_sdk::Env,
+    a: &Address,
+    pct_a: u32,
+    b: &Address,
+    pct_b: u32,
+) -> Vec<GroupMember> {
     let mut members = Vec::new(env);
-    members.push_back(GroupMember { address: a.clone(), percentage: pct_a });
-    members.push_back(GroupMember { address: b.clone(), percentage: pct_b });
+    members.push_back(GroupMember {
+        address: a.clone(),
+        percentage: pct_a,
+    });
+    members.push_back(GroupMember {
+        address: b.clone(),
+        percentage: pct_b,
+    });
     members
 }
 
@@ -44,7 +56,7 @@ fn test_breakdown_returns_earnings_for_all_groups() {
     client.distribute(&group_a, &token, &1000, &sender); // member gets 600
 
     mint_tokens(&env, &token, &sender, 400);
-    client.distribute(&group_b, &token, &400, &sender);  // member gets 100
+    client.distribute(&group_b, &token, &400, &sender); // member gets 100
 
     let breakdown = client.get_member_earnings_breakdown(&member);
 

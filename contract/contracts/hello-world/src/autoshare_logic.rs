@@ -783,10 +783,12 @@ pub fn remove_group_member(
     }
 
     let mut found = false;
+    let mut removed_percentage: u32 = 0;
     let mut new_members: Vec<GroupMember> = Vec::new(&env);
     for member in details.members.iter() {
         if member.address == member_address {
             found = true;
+            removed_percentage = member.percentage;
         } else {
             new_members.push_back(member.clone());
         }
@@ -824,14 +826,21 @@ pub fn remove_group_member(
         bump_persistent(&env, &member_groups_key);
     }
 
+    let pending_earnings = get_member_earnings(env.clone(), member_address.clone(), id.clone());
+
     AutoshareUpdated {
         id: id.clone(),
         updater: caller,
     }
     .publish(&env);
 
-    // Emit MemberRemoved event for indexers
-    emit_member_removed(&env, id.clone(), member_address.clone());
+    emit_member_removed(
+        &env,
+        id.clone(),
+        member_address.clone(),
+        removed_percentage,
+        pending_earnings,
+    );
 
     Ok(())
 }
@@ -2282,11 +2291,7 @@ pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<3
     let mut breakdown: Vec<(BytesN<32>, i128)> = Vec::new(&env);
     for group_id in group_ids.iter() {
         let earnings_key = DataKey::MemberGroupEarnings(member.clone(), group_id.clone());
-        let earnings: i128 = env
-            .storage()
-            .persistent()
-            .get(&earnings_key)
-            .unwrap_or(0);
+        let earnings: i128 = env.storage().persistent().get(&earnings_key).unwrap_or(0);
 
         // Only include this group if the member has actually earned something from it.
         if earnings > 0 {

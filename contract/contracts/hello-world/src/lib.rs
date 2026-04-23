@@ -503,10 +503,7 @@ impl AutoShareContract {
     /// Returns a per-group earnings breakdown for a member.
     /// Each entry is a (group_id, earnings) tuple — only groups with earnings > 0 are included.
     /// Returns an empty Vec if the member has no groups or has not earned anything yet.
-    pub fn get_member_earnings_breakdown(
-        env: Env,
-        member: Address,
-    ) -> Vec<(BytesN<32>, i128)> {
+    pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<32>, i128)> {
         autoshare_logic::get_member_earnings_breakdown(env, member)
     }
 
