@@ -1,5 +1,9 @@
 use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_tokens};
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String};
+use crate::base::types::GroupMember;
+use soroban_sdk::{
+    testutils::{Address as _, Events as _},
+    Address, BytesN, Env, String, Symbol, TryFromVal,
+};
 
 /// Helper function to create a group for testing
 fn create_test_group(
@@ -543,10 +547,12 @@ fn test_delete_group_with_multiple_members_cleanup() {
     let group_id = BytesN::from_array(&env, &[20u8; 32]);
     create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
 
-    // Add multiple members
-    client.add_group_member(&group_id, &creator, &member1, &100);
-    client.add_group_member(&group_id, &creator, &member2, &200);
-    client.add_group_member(&group_id, &creator, &member3, &300);
+    // Set multiple members (must sum to 100%)
+    let mut members = soroban_sdk::Vec::new(&env);
+    members.push_back(GroupMember { address: member1.clone(), percentage: 20 });
+    members.push_back(GroupMember { address: member2.clone(), percentage: 30 });
+    members.push_back(GroupMember { address: member3.clone(), percentage: 50 });
+    client.update_members(&group_id, &creator, &members);
 
     // Verify all members have the group in their index
     assert!(client.get_groups_by_member(&member1).iter().any(|g| g.id == group_id));
@@ -555,7 +561,8 @@ fn test_delete_group_with_multiple_members_cleanup() {
 
     // Deactivate and delete
     client.deactivate_group(&group_id, &creator);
-    for _ in 0..10 {
+    // Distributions consume usages; drain remaining usages safely.
+    while client.get_remaining_usages(&group_id) > 0 {
         client.reduce_usage(&group_id);
     }
     client.delete_group(&group_id, &creator);
@@ -594,7 +601,7 @@ fn test_delete_group_after_fundraising_completed() {
     
     // Contribute to reach goal
     mint_tokens(&env, &token_id, &contributor, goal);
-    client.contribute_to_fundraising(&group_id, &contributor, &token_id, &goal);
+    client.contribute(&group_id, &token_id, &goal, &contributor);
 
     // Reset fundraising (makes it inactive)
     client.reset_fundraising(&group_id, &creator);
@@ -617,6 +624,7 @@ fn test_delete_group_after_fundraising_completed() {
 }
 
 #[test]
+#[should_panic(expected = "InvalidUsageCount")]
 fn test_delete_group_with_zero_initial_usages() {
     let env = Env::default();
     env.mock_all_auths();
@@ -633,26 +641,13 @@ fn test_delete_group_with_zero_initial_usages() {
     client.initialize_admin(&admin);
     client.add_supported_token(&token_id, &admin);
 
-    // Create a group with 0 usages
+    // Creating a group with 0 usages is invalid.
     let group_id = BytesN::from_array(&env, &[22u8; 32]);
     let name = String::from_str(&env, "Zero Usage Group");
     let fee = 0;
     let amount = 10000;
     mint_tokens(&env, &token_id, &creator, amount);
     client.create(&group_id, &name, &creator, &fee, &token_id);
-
-    // Verify group has 0 usages
-    assert_eq!(client.get_remaining_usages(&group_id), 0);
-
-    // Deactivate the group
-    client.deactivate_group(&group_id, &creator);
-
-    // Should be able to delete immediately since usages are already 0
-    client.delete_group(&group_id, &creator);
-
-    // Verify deletion
-    let all_groups = client.get_all_groups();
-    assert!(!all_groups.iter().any(|g| g.id == group_id));
 }
 
 #[test]
@@ -720,15 +715,23 @@ fn test_delete_group_event_emission() {
 
     // Verify GroupDeleted event was emitted
     let events = env.events().all();
-    let delete_events: Vec<_> = events
-        .iter()
-        .filter(|e| {
-            e.topics.len() > 0 && 
-            e.topics.get(0).unwrap().to_string().contains("GroupDeleted")
-        })
-        .collect();
-    
-    assert!(delete_events.len() > 0, "GroupDeleted event should be emitted");
+    let expected = Symbol::new(&env, "group_deleted");
+    let mut found = false;
+    for event in events.iter() {
+        let topics = &event.1;
+        if topics.len() == 0 {
+            continue;
+        }
+
+        if let Ok(symbol) = Symbol::try_from_val(&env, &topics.get(0).unwrap()) {
+            if symbol == expected {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    assert!(found, "GroupDeleted event should be emitted");
 }
 
 #[test]
@@ -754,9 +757,11 @@ fn test_delete_group_with_distributions_and_earnings() {
     let group_id = BytesN::from_array(&env, &[25u8; 32]);
     create_test_group(&env, &contract_id, &token_id, &creator, group_id.clone());
 
-    // Add members with different shares
-    client.add_group_member(&group_id, &creator, &member1, &400);
-    client.add_group_member(&group_id, &creator, &member2, &600);
+    // Set members with different shares
+    let mut members = soroban_sdk::Vec::new(&env);
+    members.push_back(GroupMember { address: member1.clone(), percentage: 40 });
+    members.push_back(GroupMember { address: member2.clone(), percentage: 60 });
+    client.update_members(&group_id, &creator, &members);
 
     // Perform multiple distributions
     let distribute_amount1 = 2000i128;
@@ -777,7 +782,7 @@ fn test_delete_group_with_distributions_and_earnings() {
 
     // Deactivate and delete
     client.deactivate_group(&group_id, &creator);
-    for _ in 0..10 {
+    while client.get_remaining_usages(&group_id) > 0 {
         client.reduce_usage(&group_id);
     }
     client.delete_group(&group_id, &creator);

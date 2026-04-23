@@ -2,7 +2,7 @@
 
 use crate::test_utils::{create_test_members, create_test_group, setup_test_env};
 use crate::AutoShareContractClient;
-use soroban_sdk::{Address, BytesN};
+use soroban_sdk::{testutils::Address as _, Address, BytesN};
 
 #[test]
 fn test_deactivate_payment_group_success_updates_state() {

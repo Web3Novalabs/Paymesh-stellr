@@ -202,7 +202,7 @@ pub trait AutoShareTrait {
     fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionHistory>;
 
     /// Returns paginated distribution history for a group.
-    fn get_distribution_history_paginated(
+    fn get_group_distrib_history_page(
         env: Env,
         id: BytesN<32>,
         offset: u32,

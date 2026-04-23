@@ -384,7 +384,7 @@ impl AutoShareContract {
     }
 
     /// Returns paginated distribution history for a group.
-    pub fn get_distribution_history_paginated(
+    pub fn get_group_distrib_history_page(
         env: Env,
         id: BytesN<32>,
         offset: u32,

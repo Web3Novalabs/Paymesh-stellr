@@ -1,7 +1,7 @@
 use super::test_utils::{create_test_group, mint_tokens, setup_test_env};
 use crate::base::types::GroupMember;
 use crate::AutoShareContractClient;
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Vec};
+use soroban_sdk::{testutils::Address as _, Address, Vec};
 
 // ============================================================================
 // Helper: build a two-member Vec summing to 100%
@@ -37,7 +37,7 @@ fn test_breakdown_returns_earnings_for_all_groups() {
     let members_b = two_members(&env, &member, 25, &other, 75);
 
     let group_a = create_test_group(&env, &contract, &creator, &members_a, 5, &token);
-    let group_b = create_test_group(&env, &contract, &creator, &members_b, 5, &token);
+    let group_b = create_test_group(&env, &contract, &creator, &members_b, 6, &token);
 
     // Distribute into both groups.
     mint_tokens(&env, &token, &sender, 1000);
@@ -91,7 +91,7 @@ fn test_breakdown_filters_out_zero_earnings_groups() {
 
     // group_a will receive a distribution; group_b will not.
     let group_a = create_test_group(&env, &contract, &creator, &members_a, 5, &token);
-    let _group_b = create_test_group(&env, &contract, &creator, &members_b, 5, &token);
+    let _group_b = create_test_group(&env, &contract, &creator, &members_b, 6, &token);
 
     mint_tokens(&env, &token, &sender, 200);
     client.distribute(&group_a, &token, &200, &sender); // member gets 100 from group_a
