@@ -173,8 +173,45 @@ impl AutoShareContract {
         autoshare_logic::get_member_percentage(env, id, member).unwrap()
     }
 
-    /// Adds a member to a group with specified percentage.
-    /// Only the group creator (caller) may add members.
+    /// Adds a new member to an existing AutoShare payment group.
+    ///
+    /// This function allows group creators to add individual members to their groups
+    /// with specified percentage shares. The operation includes comprehensive validation
+    /// including capacity limits, duplicate prevention, and percentage integrity checks.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    /// * `id` - The unique identifier of the AutoShare group
+    /// * `caller` - The group creator's address (must be authenticated)
+    /// * `address` - The Stellar address of the new member
+    /// * `percentage` - The percentage share (1-99) for payment distributions
+    ///
+    /// # Authorization
+    ///
+    /// Only the group creator can call this function. The caller must provide
+    /// valid Soroban authentication.
+    ///
+    /// # Validation
+    ///
+    /// - Contract must not be paused
+    /// - Group must exist and be active
+    /// - Caller must be the group creator
+    /// - Address must not already be a member
+    /// - Group must not exceed maximum member capacity
+    /// - Total percentages must sum to 100% after addition
+    ///
+    /// # Events
+    ///
+    /// Emits `MemberAdded`, `AutoshareUpdated`, and potentially `CreatorIsMember` events.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying logic returns an error (validation failures).
+    ///
+    /// # See Also
+    ///
+    /// For adding multiple members at once, see `batch_add_members`.
     pub fn add_group_member(
         env: Env,
         id: BytesN<32>,

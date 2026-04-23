@@ -413,6 +413,83 @@ pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Resul
     Err(Error::MemberNotFound)
 }
 
+/// Adds a new member to an existing payment group while verifying capacity limits.
+///
+/// This function allows the group creator to add a single member to their AutoShare group.
+/// The operation includes comprehensive validation to ensure data integrity and prevent
+/// abuse. After adding the member, the total percentage allocation across all members
+/// must equal exactly 100% for the group to remain valid.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment providing access to storage, events, and authentication
+/// * `id` - The unique 32-byte identifier of the AutoShare group
+/// * `caller` - The address of the caller, must be the group creator for authorization
+/// * `address` - The Stellar address of the new member to add to the group
+/// * `percentage` - The percentage share (1-99) this member will receive in distributions
+///
+/// # Returns
+///
+/// Returns `Ok(())` on successful addition of the member, or an `Error` if validation fails.
+///
+/// # Events Emitted
+///
+/// * `AutoshareUpdated` - Published when the group membership is successfully modified
+/// * `MemberAdded` - Published with the group ID, new member address, and assigned percentage
+/// * `CreatorIsMember` - Published if the new member address matches the group creator
+///
+/// # Authorization
+///
+/// Only the group creator can call this function. The caller's address must match
+/// the `creator` field stored in the group's `AutoShareDetails`.
+///
+/// # Validation Checks
+///
+/// 1. **Contract State**: Contract must not be paused
+/// 2. **Group Existence**: Group with the given ID must exist
+/// 3. **Authorization**: Caller must be the group creator
+/// 4. **Group Status**: Group must be active (not deactivated)
+/// 5. **Duplicate Prevention**: Address must not already be a member
+/// 6. **Capacity Limits**: Group must not exceed maximum members (default 50, configurable)
+/// 7. **Percentage Validation**: After addition, total member percentages must sum to 100%
+/// 8. **Percentage Bounds**: Individual percentage must be greater than 0
+///
+/// # Storage Updates
+///
+/// * Updates the `AutoShare(id)` persistent storage with the new member list
+/// * Updates the `MemberGroups(address)` index to include this group for the new member
+/// * Extends TTL for all accessed persistent storage entries
+///
+/// # Potential Errors
+///
+/// * `ContractPaused` - Contract is currently paused by admin
+/// * `NotFound` - No group exists with the specified ID
+/// * `Unauthorized` - Caller is not the group creator
+/// * `GroupInactive` - Group has been deactivated
+/// * `AlreadyExists` - The address is already a member of this group
+/// * `MaxMembersExceeded` - Adding this member would exceed the group's maximum capacity
+/// * `InvalidTotalPercentage` - After addition, member percentages don't sum to 100%
+/// * `InvalidInput` - The percentage value is 0 or invalid
+///
+/// # Security Considerations
+///
+/// * Prevents DoS attacks by enforcing maximum member limits per group
+/// * Ensures percentage integrity to prevent distribution calculation errors
+/// * Maintains audit trail through event emission
+/// * Requires explicit authorization from group creator
+///
+/// # Performance Notes
+///
+/// * Iterates through existing members to check for duplicates (O(n) where n ≤ 50)
+/// * Validates percentage sums across all members after addition
+/// * Updates multiple storage entries with TTL extensions
+///
+/// # Example
+///
+/// ```ignore
+/// // Add a member with 25% share to an existing group
+/// add_group_member(env, group_id, creator_address, member_address, 25)?;
+/// ```
 pub fn add_group_member(
     env: Env,
     id: BytesN<32>,

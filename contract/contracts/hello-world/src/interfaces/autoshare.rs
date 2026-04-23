@@ -88,8 +88,24 @@ pub trait AutoShareTrait {
     /// Returns a specific member's share (percentage) in a group.
     fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32;
 
-    /// Adds a member to a group with specified percentage.
-    /// Only the group creator (caller) may add members.
+    /// Adds a new member to an existing AutoShare payment group.
+    ///
+    /// This function enables group creators to add individual members with specified
+    /// percentage shares. Comprehensive validation ensures data integrity including
+    /// capacity limits, duplicate prevention, and percentage distribution validity.
+    ///
+    /// # Authorization
+    /// Only the group creator can add members. The caller must be authenticated.
+    ///
+    /// # Validation
+    /// - Contract must not be paused
+    /// - Group must exist and be active
+    /// - Address must not already be a member
+    /// - Group capacity must not be exceeded
+    /// - Total member percentages must equal 100% after addition
+    ///
+    /// # Events
+    /// Emits `MemberAdded`, `AutoshareUpdated`, and potentially `CreatorIsMember`.
     fn add_group_member(
         env: Env,
         id: BytesN<32>,
