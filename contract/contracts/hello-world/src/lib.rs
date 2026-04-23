@@ -713,3 +713,7 @@ mod group_creation_boundary_test;
 #[cfg(test)]
 #[path = "tests/group_lifecycle_test.rs"]
 mod group_lifecycle_test;
+
+#[cfg(test)]
+#[path = "tests/deactivate_payment_group_boundary_test.rs"]
+mod deactivate_payment_group_boundary_test;
