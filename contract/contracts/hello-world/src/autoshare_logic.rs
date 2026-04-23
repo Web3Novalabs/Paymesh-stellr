@@ -1,10 +1,10 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
-    emit_fundraising_target_updated, emit_max_members_updated, emit_member_removed,
-    emit_usage_fee_updated, AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused,
-    ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
-    GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_fundraising_target_updated, emit_max_members_updated, emit_member_added,
+    emit_member_removed, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
+    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
+    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
@@ -493,6 +493,102 @@ pub fn add_group_member(
     .publish(&env);
 
     crate::base::events::emit_member_added(&env, id.clone(), address.clone(), percentage);
+
+    Ok(())
+}
+
+/// Adds a single member to an existing payment group.
+/// Distinct from `add_group_member` in that it:
+///   - validates percentage is in [1, 100]
+///   - ensures the running total across all existing members + new member does not exceed 100
+///   - enforces capacity limit before any other mutation
+pub fn add_member_to_group(
+    env: Env,
+    id: BytesN<32>,
+    caller: Address,
+    new_member: Address,
+    percentage: u32,
+) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // Validate percentage range before touching storage
+    if percentage == 0 || percentage > 100 {
+        return Err(Error::InvalidInput);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    // Capacity check before any mutation
+    if details.members.len() >= get_max_members(&env) {
+        return Err(Error::MaxMembersExceeded);
+    }
+
+    // Duplicate check
+    for member in details.members.iter() {
+        if member.address == new_member {
+            return Err(Error::AlreadyExists);
+        }
+    }
+
+    // Running-total check: existing sum + new percentage must not exceed 100
+    let mut current_total: u32 = 0;
+    for member in details.members.iter() {
+        current_total += member.percentage;
+    }
+    if current_total + percentage > 100 {
+        return Err(Error::InvalidTotalPercentage);
+    }
+
+    if new_member == details.creator {
+        emit_creator_is_member(&env, id.clone());
+    }
+
+    details.members.push_back(GroupMember {
+        address: new_member.clone(),
+        percentage,
+    });
+
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    // Update MemberGroups index
+    let member_groups_key = DataKey::MemberGroups(new_member.clone());
+    let mut member_groups: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&member_groups_key)
+        .unwrap_or(Vec::new(&env));
+    member_groups.push_back(id.clone());
+    env.storage()
+        .persistent()
+        .set(&member_groups_key, &member_groups);
+    bump_persistent(&env, &member_groups_key);
+
+    AutoshareUpdated {
+        id: id.clone(),
+        updater: caller,
+    }
+    .publish(&env);
+
+    emit_member_added(&env, id, new_member, percentage);
 
     Ok(())
 }

@@ -185,6 +185,19 @@ impl AutoShareContract {
         autoshare_logic::add_group_member(env, id, caller, address, percentage).unwrap();
     }
 
+    /// Adds a single member to an existing payment group.
+    /// Verifies capacity limits, authorization, percentage validity ([1,100]),
+    /// duplicate membership, and ensures the running total does not exceed 100.
+    pub fn add_member_to_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_member: Address,
+        percentage: u32,
+    ) {
+        autoshare_logic::add_member_to_group(env, id, caller, new_member, percentage).unwrap();
+    }
+
     /// Adds multiple members to a group in a single call.
     /// All existing + new percentages must sum to 100. Only the group creator (caller) may call.
     pub fn batch_add_members(
@@ -717,3 +730,7 @@ mod group_lifecycle_test;
 #[cfg(test)]
 #[path = "tests/deactivate_payment_group_boundary_test.rs"]
 mod deactivate_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/add_member_to_group_test.rs"]
+mod add_member_to_group_test;

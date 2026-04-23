@@ -113,6 +113,17 @@ pub trait AutoShareTrait {
     /// Only the creator can deactivate.
     fn deactivate_payment_group(env: Env, id: BytesN<32>, caller: Address);
 
+    /// Adds a single member to an existing payment group.
+    /// Verifies capacity limits, authorization, percentage validity, and duplicate membership.
+    /// The new total percentage across all members must not exceed 100.
+    fn add_member_to_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_member: Address,
+        percentage: u32,
+    );
+
     /// Activates a group. Only the creator can activate.
     fn activate_group(env: Env, id: BytesN<32>, caller: Address);
 
