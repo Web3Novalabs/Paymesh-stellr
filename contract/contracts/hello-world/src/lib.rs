@@ -61,8 +61,28 @@ impl AutoShareContract {
     // AutoShare Group Management
     // ============================================================================
 
-    /// Creates a new AutoShare plan with payment.
-    /// Requirement: create_autoshare should store data, accept payment, and emit an event.
+    /// Creates a new payment group with a designated admin (creator), member limit, and initial
+    /// subscription configuration.
+    ///
+    /// The creator pays `usage_count × usage_fee` tokens upfront. The group starts active with
+    /// an empty member list; add members afterwards with `add_group_member` or `batch_add_members`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `id` - Unique 32-byte group identifier. Must not already exist.
+    /// * `name` - Human-readable name (1–60 non-whitespace characters).
+    /// * `creator` - Group owner address. Must authorize this call.
+    /// * `usage_count` - Number of distributions to pre-purchase (≥ 1).
+    /// * `payment_token` - Fee token; must be on the supported-token list.
+    ///
+    /// # Events
+    ///
+    /// Emits `AutoshareCreated { creator, id }`.
+    ///
+    /// # Panics
+    ///
+    /// Panics on validation failure or if the token transfer fails.
     pub fn create(
         env: Env,
         id: BytesN<32>,
@@ -503,10 +523,7 @@ impl AutoShareContract {
     /// Returns a per-group earnings breakdown for a member.
     /// Each entry is a (group_id, earnings) tuple — only groups with earnings > 0 are included.
     /// Returns an empty Vec if the member has no groups or has not earned anything yet.
-    pub fn get_member_earnings_breakdown(
-        env: Env,
-        member: Address,
-    ) -> Vec<(BytesN<32>, i128)> {
+    pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<32>, i128)> {
         autoshare_logic::get_member_earnings_breakdown(env, member)
     }
 

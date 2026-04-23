@@ -1,5 +1,5 @@
-use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_tokens};
 use crate::base::types::GroupMember;
+use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_tokens};
 use soroban_sdk::{
     testutils::{Address as _, Events as _},
     Address, BytesN, Env, String, Symbol, TryFromVal,
@@ -549,15 +549,33 @@ fn test_delete_group_with_multiple_members_cleanup() {
 
     // Set multiple members (must sum to 100%)
     let mut members = soroban_sdk::Vec::new(&env);
-    members.push_back(GroupMember { address: member1.clone(), percentage: 20 });
-    members.push_back(GroupMember { address: member2.clone(), percentage: 30 });
-    members.push_back(GroupMember { address: member3.clone(), percentage: 50 });
+    members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 20,
+    });
+    members.push_back(GroupMember {
+        address: member2.clone(),
+        percentage: 30,
+    });
+    members.push_back(GroupMember {
+        address: member3.clone(),
+        percentage: 50,
+    });
     client.update_members(&group_id, &creator, &members);
 
     // Verify all members have the group in their index
-    assert!(client.get_groups_by_member(&member1).iter().any(|g| g.id == group_id));
-    assert!(client.get_groups_by_member(&member2).iter().any(|g| g.id == group_id));
-    assert!(client.get_groups_by_member(&member3).iter().any(|g| g.id == group_id));
+    assert!(client
+        .get_groups_by_member(&member1)
+        .iter()
+        .any(|g| g.id == group_id));
+    assert!(client
+        .get_groups_by_member(&member2)
+        .iter()
+        .any(|g| g.id == group_id));
+    assert!(client
+        .get_groups_by_member(&member3)
+        .iter()
+        .any(|g| g.id == group_id));
 
     // Deactivate and delete
     client.deactivate_group(&group_id, &creator);
@@ -568,9 +586,18 @@ fn test_delete_group_with_multiple_members_cleanup() {
     client.delete_group(&group_id, &creator);
 
     // Verify group is removed from all members' indexes
-    assert!(!client.get_groups_by_member(&member1).iter().any(|g| g.id == group_id));
-    assert!(!client.get_groups_by_member(&member2).iter().any(|g| g.id == group_id));
-    assert!(!client.get_groups_by_member(&member3).iter().any(|g| g.id == group_id));
+    assert!(!client
+        .get_groups_by_member(&member1)
+        .iter()
+        .any(|g| g.id == group_id));
+    assert!(!client
+        .get_groups_by_member(&member2)
+        .iter()
+        .any(|g| g.id == group_id));
+    assert!(!client
+        .get_groups_by_member(&member3)
+        .iter()
+        .any(|g| g.id == group_id));
 }
 
 #[test]
@@ -598,14 +625,14 @@ fn test_delete_group_after_fundraising_completed() {
     // Start and complete fundraising
     let goal = 1000i128;
     client.start_fundraising(&group_id, &creator, &goal);
-    
+
     // Contribute to reach goal
     mint_tokens(&env, &token_id, &contributor, goal);
     client.contribute(&group_id, &token_id, &goal, &contributor);
 
     // Reset fundraising (makes it inactive)
     client.reset_fundraising(&group_id, &creator);
-    
+
     // Verify fundraising is now inactive
     assert!(!client.get_fundraising_status(&group_id).is_active);
 
@@ -614,7 +641,7 @@ fn test_delete_group_after_fundraising_completed() {
     for _ in 0..10 {
         client.reduce_usage(&group_id);
     }
-    
+
     // Should succeed since fundraising is inactive
     client.delete_group(&group_id, &creator);
 
@@ -759,22 +786,33 @@ fn test_delete_group_with_distributions_and_earnings() {
 
     // Set members with different shares
     let mut members = soroban_sdk::Vec::new(&env);
-    members.push_back(GroupMember { address: member1.clone(), percentage: 40 });
-    members.push_back(GroupMember { address: member2.clone(), percentage: 60 });
+    members.push_back(GroupMember {
+        address: member1.clone(),
+        percentage: 40,
+    });
+    members.push_back(GroupMember {
+        address: member2.clone(),
+        percentage: 60,
+    });
     client.update_members(&group_id, &creator, &members);
 
     // Perform multiple distributions
     let distribute_amount1 = 2000i128;
     let distribute_amount2 = 3000i128;
-    
-    mint_tokens(&env, &token_id, &creator, distribute_amount1 + distribute_amount2);
+
+    mint_tokens(
+        &env,
+        &token_id,
+        &creator,
+        distribute_amount1 + distribute_amount2,
+    );
     client.distribute(&group_id, &token_id, &distribute_amount1, &creator);
     client.distribute(&group_id, &token_id, &distribute_amount2, &creator);
 
     // Verify distributions and earnings exist
     let distributions_before = client.get_group_distributions(&group_id);
     assert_eq!(distributions_before.len(), 2);
-    
+
     let member1_earnings_before = client.get_member_earnings(&member1, &group_id);
     let member2_earnings_before = client.get_member_earnings(&member2, &group_id);
     assert!(member1_earnings_before > 0);
@@ -790,7 +828,7 @@ fn test_delete_group_with_distributions_and_earnings() {
     // Verify distributions and earnings are preserved after deletion
     let distributions_after = client.get_group_distributions(&group_id);
     assert_eq!(distributions_after.len(), 2);
-    
+
     let member1_earnings_after = client.get_member_earnings(&member1, &group_id);
     let member2_earnings_after = client.get_member_earnings(&member2, &group_id);
     assert_eq!(member1_earnings_after, member1_earnings_before);

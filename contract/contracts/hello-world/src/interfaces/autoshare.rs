@@ -45,7 +45,33 @@ pub trait AutoShareTrait {
     // AutoShare Group Management
     // ============================================================================
 
-    /// Creates a new AutoShare plan with payment.
+    /// Creates a new payment group with a designated admin (creator), member limit, and initial
+    /// subscription configuration.
+    ///
+    /// The creator pays `usage_count × usage_fee` tokens upfront. The group starts active with
+    /// an empty member list; add members afterwards with `add_group_member` or `batch_add_members`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `id` - Unique 32-byte group identifier. Must not already exist.
+    /// * `name` - Human-readable name (1–60 non-whitespace characters).
+    /// * `creator` - Group owner address. Must authorize this call.
+    /// * `usage_count` - Number of distributions to pre-purchase (≥ 1).
+    /// * `payment_token` - Fee token; must be on the supported-token list.
+    ///
+    /// # Events
+    ///
+    /// Emits `AutoshareCreated { creator, id }`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ContractPaused`, `EmptyName`, `AlreadyExists`, `InvalidUsageCount`, or
+    /// `UnsupportedToken` on validation failure.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the token transfer fails (e.g. insufficient balance).
     fn create(
         env: Env,
         id: BytesN<32>,

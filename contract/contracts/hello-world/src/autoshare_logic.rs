@@ -83,6 +83,44 @@ fn is_valid_name(name: &String) -> bool {
     true
 }
 
+/// Creates a new payment group with a designated admin (creator), member limit, and initial
+/// subscription configuration.
+///
+/// The creator pays an upfront fee of `usage_count × usage_fee` tokens to fund the group's
+/// distribution quota. The group is stored in persistent ledger storage and starts active with
+/// an empty member list. Members can be added afterwards via `add_group_member` or
+/// `batch_add_members`.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment.
+/// * `id` - A unique 32-byte identifier for the group. Must not already exist in storage.
+/// * `name` - A human-readable group name (1–60 non-whitespace characters).
+/// * `creator` - The address that will own and administer the group. Must authorize this call.
+/// * `usage_count` - Number of payment distributions to pre-purchase. Must be ≥ 1.
+/// * `payment_token` - The token used to pay the creation fee. Must be on the supported-token list.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success.
+///
+/// # Events
+///
+/// Emits [`AutoshareCreated`] with `creator` and `id` as fields.
+///
+/// # Errors
+///
+/// | Error | Condition |
+/// |---|---|
+/// | `ContractPaused` | The contract is currently paused. |
+/// | `EmptyName` | `name` is empty, whitespace-only, or exceeds 60 characters. |
+/// | `AlreadyExists` | A group with the given `id` already exists. |
+/// | `InvalidUsageCount` | `usage_count` is 0. |
+/// | `UnsupportedToken` | `payment_token` is not on the supported-token list. |
+///
+/// # Panics
+///
+/// Panics if the token transfer fails (e.g. insufficient creator balance or allowance).
 pub fn create_autoshare(
     env: Env,
     id: BytesN<32>,
@@ -2282,11 +2320,7 @@ pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<3
     let mut breakdown: Vec<(BytesN<32>, i128)> = Vec::new(&env);
     for group_id in group_ids.iter() {
         let earnings_key = DataKey::MemberGroupEarnings(member.clone(), group_id.clone());
-        let earnings: i128 = env
-            .storage()
-            .persistent()
-            .get(&earnings_key)
-            .unwrap_or(0);
+        let earnings: i128 = env.storage().persistent().get(&earnings_key).unwrap_or(0);
 
         // Only include this group if the member has actually earned something from it.
         if earnings > 0 {
