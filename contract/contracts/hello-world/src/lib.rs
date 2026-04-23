@@ -75,6 +75,22 @@ impl AutoShareContract {
             .unwrap();
     }
 
+    /// Creates a payment group (AutoShare plan). Semantically identical to [`Self::create`].
+    ///
+    /// This entrypoint exists for integrators and documentation that refer to
+    /// “payment group” lifecycle naming.
+    pub fn create_payment_group(
+        env: Env,
+        id: BytesN<32>,
+        name: String,
+        creator: Address,
+        usage_count: u32,
+        payment_token: Address,
+    ) {
+        autoshare_logic::create_autoshare(env, id, name, creator, usage_count, payment_token)
+            .unwrap();
+    }
+
     /// Update members of an existing AutoShare plan.
     /// Requirement: Only creator can update. Validates percentages.
     pub fn update_members(
@@ -264,6 +280,16 @@ impl AutoShareContract {
     /// Removes a single member from a group. Only the creator can call; group must be active.
     /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
     pub fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address) {
+        autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
+    }
+
+    /// Removes a member from a payment group. Semantically identical to [`Self::remove_group_member`].
+    pub fn remove_member_from_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        member_address: Address,
+    ) {
         autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
     }
 
@@ -774,6 +800,18 @@ mod usage_tracking_test;
 #[cfg(test)]
 #[path = "tests/group_creation_boundary_test.rs"]
 mod group_creation_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/create_payment_group_test.rs"]
+mod create_payment_group_test;
+
+#[cfg(test)]
+#[path = "tests/create_payment_group_boundary_test.rs"]
+mod create_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/remove_member_from_group_test.rs"]
+mod remove_member_from_group_test;
 
 #[cfg(test)]
 #[path = "tests/group_lifecycle_test.rs"]
