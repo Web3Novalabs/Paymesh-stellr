@@ -207,6 +207,11 @@ impl AutoShareContract {
         autoshare_logic::deactivate_group(env, id, caller).unwrap();
     }
 
+    /// Deactivates a payment group so it can no longer accept new distributions or member changes.
+    pub fn deactivate_payment_group(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::deactivate_payment_group(env, id, caller).unwrap();
+    }
+
     /// Activates a group. Only the creator can activate.
     pub fn activate_group(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::activate_group(env, id, caller).unwrap();
@@ -668,6 +673,10 @@ mod event_emission_test;
 #[cfg(test)]
 #[path = "tests/delete_group_test.rs"]
 mod delete_group_test;
+
+#[cfg(test)]
+#[path = "tests/deactivate_payment_group_test.rs"]
+mod deactivate_payment_group_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_distribution_interaction_test.rs"]

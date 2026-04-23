@@ -1557,6 +1557,12 @@ pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(),
     Ok(())
 }
 
+/// Deactivates a payment group so it can no longer accept new distributions or member changes.
+/// This is a protocol-level alias of `deactivate_group` to keep storage, auth, and events aligned.
+pub fn deactivate_payment_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    deactivate_group(env, id, caller)
+}
+
 pub fn activate_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
     caller.require_auth();
 
