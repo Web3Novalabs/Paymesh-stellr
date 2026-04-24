@@ -700,6 +700,43 @@ impl AutoShareContract {
     pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::cancel_fundraising(env, id, caller).unwrap();
     }
+
+    // ============================================================================
+    // Treasury
+    // ============================================================================
+
+    /// Deposits `amount` of `token` into the group's treasury for future distributions.
+    /// Depositor must authorize. Group must be active and token must be supported.
+    pub fn deposit_funds(
+        env: Env,
+        id: BytesN<32>,
+        token: Address,
+        amount: i128,
+        depositor: Address,
+    ) {
+        autoshare_logic::deposit_funds(env, id, token, amount, depositor).unwrap();
+    }
+
+    /// Returns the treasury balance for a specific (group, token) pair.
+    pub fn get_group_treasury_balance(env: Env, id: BytesN<32>, token: Address) -> i128 {
+        autoshare_logic::get_group_treasury_balance(env, id, token)
+    }
+
+    /// Returns the full deposit history for a group (all tokens, all depositors).
+    pub fn get_group_deposit_history(
+        env: Env,
+        id: BytesN<32>,
+    ) -> Vec<base::types::DepositRecord> {
+        autoshare_logic::get_group_deposit_history(env, id)
+    }
+
+    /// Returns the full deposit history for a specific depositor across all groups.
+    pub fn get_depositor_history(
+        env: Env,
+        depositor: Address,
+    ) -> Vec<base::types::DepositRecord> {
+        autoshare_logic::get_depositor_history(env, depositor)
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -866,3 +903,7 @@ mod update_payment_group_test;
 #[cfg(test)]
 #[path = "tests/update_payment_group_boundary_test.rs"]
 mod update_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/deposit_funds_test.rs"]
+mod deposit_funds_test;
