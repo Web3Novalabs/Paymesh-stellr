@@ -38,6 +38,8 @@ pub enum DataKey {
     MinContribution,
     // Diagnostic: per-group invocation counter for get_group_members
     GroupMembersQueryCount(BytesN<32>),
+    ProtocolFee,
+    ProtocolFeeRecipient,
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -3290,4 +3292,68 @@ pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) -> Result<(
     emit_fundraising_cancelled(&env, id.clone(), total_raised_at_cancellation);
 
     Ok(())
+}
+
+pub fn get_protocol_fee(env: Env) -> (u32, Address) {
+    let fee = get_protocol_fee_val(&env);
+    let recipient = get_protocol_recipient_val(&env);
+    (fee, recipient)
+}
+
+pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    if fee > 10000 {
+        return Err(Error::InvalidInput);
+    }
+
+    let old_fee = get_protocol_fee_val(&env);
+    let old_recipient = get_protocol_recipient_val(&env);
+
+    let fee_key = DataKey::ProtocolFee;
+    let recipient_key = DataKey::ProtocolFeeRecipient;
+
+    env.storage().persistent().set(&fee_key, &fee);
+    env.storage().persistent().set(&recipient_key, &recipient);
+
+    bump_persistent(&env, &fee_key);
+    bump_persistent(&env, &recipient_key);
+
+    crate::base::events::emit_protocol_fee_updated(
+        &env,
+        admin,
+        old_fee,
+        fee,
+        old_recipient,
+        recipient,
+    );
+
+    Ok(())
+}
+
+fn get_protocol_fee_val(env: &Env) -> u32 {
+    let key = DataKey::ProtocolFee;
+    let fee = env.storage().persistent().get(&key).unwrap_or(0u32);
+    if env.storage().persistent().has(&key) {
+        bump_persistent(env, &key);
+    }
+    fee
+}
+
+fn get_protocol_recipient_val(env: &Env) -> Address {
+    let key = DataKey::ProtocolFeeRecipient;
+    // Default to admin if not set
+    let admin_key = DataKey::Admin;
+    let admin = env
+        .storage()
+        .persistent()
+        .get(&admin_key)
+        .expect("admin must be set");
+
+    let recipient = env.storage().persistent().get(&key).unwrap_or(admin);
+    if env.storage().persistent().has(&key) {
+        bump_persistent(env, &key);
+    }
+    recipient
 }

@@ -439,3 +439,44 @@ pub fn emit_group_members_queried(
     }
     .publish(env);
 }
+
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeUpdated {
+    #[topic]
+    pub admin: Address,
+    pub old_fee: u32,
+    pub new_fee: u32,
+    pub old_recipient: Address,
+    pub new_recipient: Address,
+}
+
+pub fn emit_protocol_fee_updated(
+    env: &Env,
+    admin: Address,
+    old_fee: u32,
+    new_fee: u32,
+    old_recipient: Address,
+    new_recipient: Address,
+) {
+    ProtocolFeeUpdated {
+        admin,
+        old_fee,
+        new_fee,
+        old_recipient,
+        new_recipient,
+    }
+    .publish(env);
+}
+
+/// Emitted every time `get_protocol_fee` is invoked for analytics.
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeRead {
+    pub fee: u32,
+    pub recipient: Address,
+}
+
+pub fn emit_protocol_fee_read(env: &Env, fee: u32, recipient: Address) {
+    ProtocolFeeRead { fee, recipient }.publish(env);
+}

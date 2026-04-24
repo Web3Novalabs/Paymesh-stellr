@@ -338,4 +338,14 @@ pub trait AutoShareTrait {
 
     /// Cancels an active fundraising campaign. Only the group creator can cancel.
     fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address);
+
+    // ============================================================================
+    // Protocol Configuration
+    // ============================================================================
+
+    /// Returns the current protocol fee percentage (in basis points) and the fee recipient.
+    fn get_protocol_fee(env: Env) -> (u32, Address);
+
+    /// Sets the protocol fee and recipient address (admin only).
+    fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address);
 }

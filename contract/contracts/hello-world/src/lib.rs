@@ -706,6 +706,39 @@ impl AutoShareContract {
     pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::cancel_fundraising(env, id, caller).unwrap();
     }
+
+    // ============================================================================
+    // Protocol Configuration
+    // ============================================================================
+
+    /// Returns the current protocol fee percentage (in basis points) and the fee recipient.
+    ///
+    /// This is a read-only operation that tracks invocations for off-chain analytics.
+    pub fn get_protocol_fee(env: Env) -> (u32, Address) {
+        let (fee, recipient) = autoshare_logic::get_protocol_fee(env.clone());
+
+        // Internal analytics: track read invocation (Issue #294)
+        crate::base::events::emit_protocol_fee_read(&env, fee, recipient.clone());
+
+        (fee, recipient)
+    }
+
+    /// Sets the protocol fee and recipient address (admin only).
+    /// Add comprehensive Rustdoc (Issue #290).
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `fee` - New fee in basis points (max 10000).
+    /// * `recipient` - New address to receive protocol fees.
+    /// * `admin` - Current contract admin address. Must authorize.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the caller is not the admin or if the fee exceeds 10000 bps.
+    pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) {
+        autoshare_logic::set_protocol_fee(env, fee, recipient, admin).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -876,3 +909,11 @@ mod update_payment_group_boundary_test;
 #[cfg(test)]
 #[path = "tests/get_group_members_diagnostics_test.rs"]
 mod get_group_members_diagnostics_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_boundary_test.rs"]
+mod get_group_members_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/protocol_fee_boundary_test.rs"]
+mod protocol_fee_boundary_test;

@@ -95,3 +95,33 @@ These events are essential for the frontend transaction history page and analyti
 - If you initialized this project with any other example contracts via `--with-example`, those contracts will be in the `contracts` directory as well.
 - Contracts should have their own `Cargo.toml` files that rely on the top-level `Cargo.toml` workspace for their dependencies.
 - Frontend libraries can be added to the top-level directory as well. If you initialized this project with a frontend template via `--frontend-template` you will have those files already included.
+
+---
+
+## Protocol Configuration
+
+### set_protocol_fee
+
+Updates the global protocol fee percentage and the recipient address. Only the contract admin can call this function.
+
+**Arguments:**
+- `fee`: New fee in basis points (0–10000, where 10000 = 100%).
+- `recipient`: The `Address` that will receive protocol-level fees.
+- `admin`: The current contract admin address (must authorize).
+
+**Events:**
+- Emits `ProtocolFeeUpdated { admin, old_fee, new_fee, old_recipient, new_recipient }`.
+
+**Panics:**
+- If `admin` is not the authorized contract administrator.
+- If `fee` exceeds 10000 bps.
+
+### get_protocol_fee
+
+Returns the current protocol fee percentage and recipient address.
+
+**Returns:**
+- `(u32, Address)`: The current fee in basis points and the recipient address.
+
+**Diagnostics:**
+- Emits `ProtocolFeeRead { fee, recipient }` on every invocation for off-chain analytics and usage tracking.
