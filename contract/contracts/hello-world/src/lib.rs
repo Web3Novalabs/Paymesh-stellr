@@ -886,3 +886,7 @@ mod update_payment_group_boundary_test;
 #[cfg(test)]
 #[path = "tests/set_protocol_fee_test.rs"]
 mod set_protocol_fee_test;
+
+#[cfg(test)]
+#[path = "tests/update_payment_group_advanced_test.rs"]
+mod update_payment_group_advanced_test;
