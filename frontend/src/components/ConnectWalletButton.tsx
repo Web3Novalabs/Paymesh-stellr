@@ -173,7 +173,7 @@ export default function ConnectWalletButton() {
           <>
             <button
               onClick={() => setModalOpen(true)}
-              className="bg-[#5B63D6] hover:bg-[#4A51C9] text-white px-3 lg:px-6 py-[11px] lg:py-[15px] rounded-full text-xs lg:text-sm/[100%] font-black tracking-[0] uppercase transition-colors shadow-lg shadow-indigo-500/20"
+              className="bg-[#5B63D6] hover:bg-[#4A51C9] md:text-stone-900 text-white px-3 lg:px-6 py-[11px] lg:py-[15px] rounded-full text-xs lg:text-sm/[100%] font-black tracking-[0] uppercase transition-colors shadow-lg shadow-indigo-500/20"
             >
               CONNECT WALLET
             </button>
@@ -185,7 +185,7 @@ export default function ConnectWalletButton() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onConnected={(key) => {
-          // Key status is managed by WalletProvider via the connectWallet(id) call inside the modal
+         console.log(" Key status is managed by WalletProvider via the connectWallet(id) call inside the modal")
         }}
       />
     </>

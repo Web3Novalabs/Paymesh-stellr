@@ -6,14 +6,81 @@ This repository uses the recommended structure for a Soroban project:
 ```text
 .
 ├── contracts
-│   └── hello_world
-│       ├── src
-│       │   ├── lib.rs
-│       │   └── test.rs
-│       └── Cargo.toml
+│   └── hello_world
+│       ├── src
+│       │   ├── lib.rs
+│       │   └── test.rs
+│       └── Cargo.toml
 ├── Cargo.toml
 └── README.md
 ```
+
+## `create` — Create a Payment Group
+
+Creates a new payment group with a designated admin (creator), a pre-purchased distribution
+quota, and an initial empty member list.
+
+### Entry point
+
+```rust
+pub fn create(
+    env: Env,
+    id: BytesN<32>,
+    name: String,
+    creator: Address,
+    usage_count: u32,
+    payment_token: Address,
+)
+```
+
+### Arguments
+
+| Parameter | Type | Description |
+|---|---|---|
+| `env` | `Env` | Soroban environment |
+| `id` | `BytesN<32>` | Unique group identifier — must not already exist |
+| `name` | `String` | Human-readable name (1–60 non-whitespace characters) |
+| `creator` | `Address` | Group owner; must authorize the call |
+| `usage_count` | `u32` | Number of distributions to pre-purchase (≥ 1) |
+| `payment_token` | `Address` | Token used to pay the creation fee; must be supported |
+
+### How it works
+
+1. `creator.require_auth()` — enforces Soroban authorization.
+2. Validates the contract is not paused, the name is non-empty, the `id` is unused, `usage_count ≥ 1`, and `payment_token` is on the supported-token list.
+3. Calculates `total_cost = usage_count × usage_fee` and transfers that amount from `creator` to the contract.
+4. Stores an `AutoShareDetails` record (active, empty member list) in persistent ledger storage and appends the `id` to the global group index.
+5. Records a `PaymentHistory` entry for the creator.
+6. Emits `AutoshareCreated { creator, id }`.
+
+### Return value
+
+`()` — no return value. Panics (via `.unwrap()`) on any validation error or failed token transfer.
+
+### Emitted events
+
+| Event | Fields | When |
+|---|---|---|
+| `AutoshareCreated` | `creator`, `id` | Always on success |
+
+### Error conditions
+
+| Error | Condition |
+|---|---|
+| `ContractPaused` | Contract is paused |
+| `EmptyName` | Name is empty, whitespace-only, or > 60 characters |
+| `AlreadyExists` | A group with the given `id` already exists |
+| `InvalidUsageCount` | `usage_count` is 0 |
+| `UnsupportedToken` | `payment_token` is not on the supported-token list |
+
+> **Panics** if the token transfer fails (e.g. insufficient creator balance or allowance).
+
+### Post-creation workflow
+
+After creation the group has no members. Use `add_group_member` or `batch_add_members` to add
+members with percentage splits that sum to 100 before calling `distribute`.
+
+---
 
 ## Payment Flow Events
 

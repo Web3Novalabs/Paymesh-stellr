@@ -1,21 +1,18 @@
 use crate::base::errors::Error;
 use crate::base::events::{
-    emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_target_updated,
-    emit_max_members_updated, AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused,
-    ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
-    GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
+    emit_fundraising_target_updated, emit_max_members_updated, emit_member_removed,
+    emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
+    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
+    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
     ActiveFundraising, AutoShareDetails, DistributionHistory, DistributionRecord,
-    FundraisingConfig, FundraisingContribution, GroupMember, GroupPage, GroupStats, MemberAmount,
-    MemberDistributionRecord, MemberPage, PaymentHistory,
+    FundraisingConfig, FundraisingContribution, GroupMember, GroupPage, GroupStats, GroupSummary,
+    MemberAmount, MemberDistributionRecord, PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
-
-extern crate alloc;
-use alloc::string::String as AllocString;
-use alloc::string::ToString;
 
 #[contracttype]
 pub enum DataKey {
@@ -57,17 +54,73 @@ fn bump_persistent<K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, ke
 }
 
 fn is_valid_name(name: &String) -> bool {
-    let alloc_str: AllocString = name.to_string();
-    let trimmed = alloc_str.trim();
-    if trimmed.is_empty() {
+    // Check if name is empty
+    if name.len() == 0 {
         return false;
     }
-    if alloc_str.len() > 60 {
+    // Check if name exceeds maximum length
+    if name.len() > 60 {
         return false;
     }
+
+    let name_len = name.len() as usize;
+    let mut buf = [0u8; 60];
+    name.copy_into_slice(&mut buf[..name_len]);
+
+    let mut only_whitespace = true;
+    for i in 0..name_len {
+        let b = buf[i];
+        if b != b' ' && b != b'\t' && b != b'\n' && b != b'\r' {
+            only_whitespace = false;
+            break;
+        }
+    }
+
+    if only_whitespace {
+        return false;
+    }
+
     true
 }
 
+/// Creates a new payment group with a designated admin (creator), member limit, and initial
+/// subscription configuration.
+///
+/// The creator pays an upfront fee of `usage_count × usage_fee` tokens to fund the group's
+/// distribution quota. The group is stored in persistent ledger storage and starts active with
+/// an empty member list. Members can be added afterwards via `add_group_member` or
+/// `batch_add_members`.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment.
+/// * `id` - A unique 32-byte identifier for the group. Must not already exist in storage.
+/// * `name` - A human-readable group name (1–60 non-whitespace characters).
+/// * `creator` - The address that will own and administer the group. Must authorize this call.
+/// * `usage_count` - Number of payment distributions to pre-purchase. Must be ≥ 1.
+/// * `payment_token` - The token used to pay the creation fee. Must be on the supported-token list.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success.
+///
+/// # Events
+///
+/// Emits [`AutoshareCreated`] with `creator` and `id` as fields.
+///
+/// # Errors
+///
+/// | Error | Condition |
+/// |---|---|
+/// | `ContractPaused` | The contract is currently paused. |
+/// | `EmptyName` | `name` is empty, whitespace-only, or exceeds 60 characters. |
+/// | `AlreadyExists` | A group with the given `id` already exists. |
+/// | `InvalidUsageCount` | `usage_count` is 0. |
+/// | `UnsupportedToken` | `payment_token` is not on the supported-token list. |
+///
+/// # Panics
+///
+/// Panics if the token transfer fails (e.g. insufficient creator balance or allowance).
 pub fn create_autoshare(
     env: Env,
     id: BytesN<32>,
@@ -116,6 +169,7 @@ pub fn create_autoshare(
     let details = AutoShareDetails {
         id: id.clone(),
         name,
+        metadata: String::from_str(&env, ""),
         creator: creator.clone(),
         usage_count,
         total_usages_paid: usage_count,
@@ -162,6 +216,136 @@ pub fn get_autoshare(env: Env, id: BytesN<32>) -> Result<AutoShareDetails, Error
         bump_persistent(&env, &key);
     }
     result.ok_or(Error::NotFound)
+}
+
+/// Retrieves a lightweight summary of payment group metadata, status, and statistics.
+///
+/// This function provides efficient access to commonly requested group information
+/// without loading the full group details and member list. It's designed to reduce
+/// RPC calls for frontend components that need group cards or summary displays.
+/// The returned `GroupSummary` contains essential metadata for group listings,
+/// status indicators, and basic statistics.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment providing access to persistent storage
+/// * `id` - The unique 32-byte identifier of the AutoShare payment group
+///
+/// # Returns
+///
+/// Returns `Result<GroupSummary, Error>` containing a lightweight group summary struct
+/// with the following fields:
+/// - `id`: The group identifier
+/// - `name`: Human-readable group name
+/// - `creator`: Address of the group creator
+/// - `member_count`: Number of active members in the group
+/// - `is_active`: Whether the group is active and accepting operations
+/// - `remaining_usages`: Number of remaining payment distributions allowed
+/// - `has_active_fundraising`: Whether the group has an active fundraising campaign
+/// - `total_distributions`: Total number of payment distributions processed
+///
+/// # Events Emitted
+///
+/// This function does not emit any events as it is a read-only operation.
+///
+/// # Authorization
+///
+/// No authorization is required - this is a public read operation accessible to all addresses.
+///
+/// # Storage Access
+///
+/// * **Reads**: `AutoShare(id)` - Core group details (required)
+/// * **Reads**: `GroupFundraising(id)` - Fundraising status (optional)
+/// * **Reads**: `GroupDistributionHistory(id)` - Distribution count (optional)
+/// * **TTL Extension**: Extends TTL for all accessed persistent storage entries
+///
+/// # Performance Characteristics
+///
+/// * **Time Complexity**: O(1) - Constant time lookups with bounded data sizes
+/// * **Storage Operations**: 1-3 persistent reads depending on optional data
+/// * **Memory Usage**: Minimal - only loads summary data, not full member lists
+/// * **Network Efficiency**: Single RPC call returns all summary information
+///
+/// # Error Conditions
+///
+/// * `NotFound` - The specified group ID does not exist in storage
+///
+/// # Use Cases
+///
+/// This function is optimized for:
+/// - Group listing displays in frontend applications
+/// - Status indicators and badges
+/// - Quick group information lookups
+/// - Reducing RPC call frequency for UI components
+/// - Group search and filtering operations
+///
+/// # Related Functions
+///
+/// * `get()` - Returns full group details including complete member list
+/// * `get_group_members()` - Returns only the member list
+/// * `is_group_active()` - Returns only the active status
+///
+/// # Example
+///
+/// ```ignore
+/// // Get summary for efficient group display
+/// let summary = get_group_summary(env, group_id)?;
+///
+/// // Use summary data for UI rendering
+/// display_group_card(
+///     summary.name,
+///     summary.member_count,
+///     summary.is_active,
+///     summary.has_active_fundraising
+/// );
+/// ```
+pub fn get_group_summary(env: Env, id: BytesN<32>) -> Result<GroupSummary, Error> {
+    use crate::base::types::GroupSummary;
+
+    // Get basic group info
+    let key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    // Get fundraising status
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    let has_active_fundraising = env
+        .storage()
+        .persistent()
+        .get::<_, FundraisingConfig>(&fundraising_key)
+        .map(|f| f.is_active)
+        .unwrap_or(false);
+    if env.storage().persistent().has(&fundraising_key) {
+        bump_persistent(&env, &fundraising_key);
+    }
+
+    // Get distribution count
+    let dist_key = DataKey::GroupDistributionHistory(id.clone());
+    let total_distributions = env
+        .storage()
+        .persistent()
+        .get::<_, Vec<DistributionHistory>>(&dist_key)
+        .map(|d| d.len() as u32)
+        .unwrap_or(0);
+    if env.storage().persistent().has(&dist_key) {
+        bump_persistent(&env, &dist_key);
+    }
+
+    Ok(GroupSummary {
+        id: details.id,
+        name: details.name,
+        metadata: details.metadata,
+        creator: details.creator,
+        member_count: details.members.len() as u32,
+        is_active: details.is_active,
+        remaining_usages: details.usage_count,
+        has_active_fundraising,
+        total_distributions,
+    })
 }
 
 fn get_all_group_ids(env: &Env) -> Vec<BytesN<32>> {
@@ -402,6 +586,83 @@ pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Resul
     Err(Error::MemberNotFound)
 }
 
+/// Adds a new member to an existing payment group while verifying capacity limits.
+///
+/// This function allows the group creator to add a single member to their AutoShare group.
+/// The operation includes comprehensive validation to ensure data integrity and prevent
+/// abuse. After adding the member, the total percentage allocation across all members
+/// must equal exactly 100% for the group to remain valid.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment providing access to storage, events, and authentication
+/// * `id` - The unique 32-byte identifier of the AutoShare group
+/// * `caller` - The address of the caller, must be the group creator for authorization
+/// * `address` - The Stellar address of the new member to add to the group
+/// * `percentage` - The percentage share (1-99) this member will receive in distributions
+///
+/// # Returns
+///
+/// Returns `Ok(())` on successful addition of the member, or an `Error` if validation fails.
+///
+/// # Events Emitted
+///
+/// * `AutoshareUpdated` - Published when the group membership is successfully modified
+/// * `MemberAdded` - Published with the group ID, new member address, and assigned percentage
+/// * `CreatorIsMember` - Published if the new member address matches the group creator
+///
+/// # Authorization
+///
+/// Only the group creator can call this function. The caller's address must match
+/// the `creator` field stored in the group's `AutoShareDetails`.
+///
+/// # Validation Checks
+///
+/// 1. **Contract State**: Contract must not be paused
+/// 2. **Group Existence**: Group with the given ID must exist
+/// 3. **Authorization**: Caller must be the group creator
+/// 4. **Group Status**: Group must be active (not deactivated)
+/// 5. **Duplicate Prevention**: Address must not already be a member
+/// 6. **Capacity Limits**: Group must not exceed maximum members (default 50, configurable)
+/// 7. **Percentage Validation**: After addition, total member percentages must sum to 100%
+/// 8. **Percentage Bounds**: Individual percentage must be greater than 0
+///
+/// # Storage Updates
+///
+/// * Updates the `AutoShare(id)` persistent storage with the new member list
+/// * Updates the `MemberGroups(address)` index to include this group for the new member
+/// * Extends TTL for all accessed persistent storage entries
+///
+/// # Potential Errors
+///
+/// * `ContractPaused` - Contract is currently paused by admin
+/// * `NotFound` - No group exists with the specified ID
+/// * `Unauthorized` - Caller is not the group creator
+/// * `GroupInactive` - Group has been deactivated
+/// * `AlreadyExists` - The address is already a member of this group
+/// * `MaxMembersExceeded` - Adding this member would exceed the group's maximum capacity
+/// * `InvalidTotalPercentage` - After addition, member percentages don't sum to 100%
+/// * `InvalidInput` - The percentage value is 0 or invalid
+///
+/// # Security Considerations
+///
+/// * Prevents DoS attacks by enforcing maximum member limits per group
+/// * Ensures percentage integrity to prevent distribution calculation errors
+/// * Maintains audit trail through event emission
+/// * Requires explicit authorization from group creator
+///
+/// # Performance Notes
+///
+/// * Iterates through existing members to check for duplicates (O(n) where n ≤ 50)
+/// * Validates percentage sums across all members after addition
+/// * Updates multiple storage entries with TTL extensions
+///
+/// # Example
+///
+/// ```ignore
+/// // Add a member with 25% share to an existing group
+/// add_group_member(env, group_id, creator_address, member_address, 25)?;
+/// ```
 pub fn add_group_member(
     env: Env,
     id: BytesN<32>,
@@ -478,10 +739,22 @@ pub fn add_group_member(
     AutoshareUpdated {
         id: id.clone(),
         updater: caller,
+        name_updated: false,
+        metadata_updated: false,
+        new_creator: None,
     }
     .publish(&env);
 
     crate::base::events::emit_member_added(&env, id.clone(), address.clone(), percentage);
+
+    crate::base::events::emit_member_added_to_group(
+        &env,
+        id,
+        address,
+        caller,
+        percentage,
+        details.members.len(),
+    );
 
     Ok(())
 }
@@ -579,6 +852,9 @@ pub fn batch_add_members(
     AutoshareUpdated {
         id: id.clone(),
         updater: caller,
+        name_updated: false,
+        metadata_updated: false,
+        new_creator: None,
     }
     .publish(&env);
 
@@ -614,10 +890,12 @@ pub fn remove_group_member(
     }
 
     let mut found = false;
+    let mut removed_percentage: u32 = 0;
     let mut new_members: Vec<GroupMember> = Vec::new(&env);
     for member in details.members.iter() {
         if member.address == member_address {
             found = true;
+            removed_percentage = member.percentage;
         } else {
             new_members.push_back(member.clone());
         }
@@ -655,11 +933,25 @@ pub fn remove_group_member(
         bump_persistent(&env, &member_groups_key);
     }
 
+    let pending_earnings = get_member_earnings(env.clone(), member_address.clone(), id.clone());
+
     AutoshareUpdated {
         id: id.clone(),
         updater: caller,
+        name_updated: false,
+        metadata_updated: false,
+        new_creator: None,
     }
     .publish(&env);
+
+    emit_member_removed(
+        &env,
+        id.clone(),
+        member_address.clone(),
+        removed_percentage,
+        pending_earnings,
+    );
+
     Ok(())
 }
 
@@ -881,9 +1173,12 @@ pub fn set_usage_fee(env: Env, fee: u32, admin: Address) -> Result<(), Error> {
         return Err(Error::InvalidAmount);
     }
 
+    let old_fee = get_usage_fee(env.clone());
     let fee_key = DataKey::UsageFee;
     env.storage().persistent().set(&fee_key, &fee);
     bump_persistent(&env, &fee_key);
+
+    emit_usage_fee_updated(&env, admin, old_fee, fee);
     Ok(())
 }
 
@@ -1226,6 +1521,42 @@ pub fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionReco
         .unwrap_or(Vec::new(&env))
 }
 
+pub fn get_distribution_history_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> (Vec<DistributionRecord>, u32) {
+    let group_dist_key = DataKey::GroupDistributions(id);
+    let distributions: Vec<DistributionRecord> = env
+        .storage()
+        .persistent()
+        .get(&group_dist_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = distributions.len();
+    if total == 0 {
+        return (Vec::new(&env), 0);
+    }
+
+    bump_persistent(&env, &group_dist_key);
+
+    // Cap limit at 20
+    let actual_limit = limit.min(20);
+    let mut paginated = Vec::new(&env);
+
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(record) = distributions.get(i) {
+                paginated.push_back(record);
+            }
+        }
+    }
+
+    (paginated, total)
+}
+
 pub fn get_group_total_distributed(env: Env, id: BytesN<32>) -> i128 {
     let distributions = get_group_distributions(env, id);
     let mut total: i128 = 0;
@@ -1241,6 +1572,42 @@ pub fn get_member_distributions(env: Env, member: Address) -> Vec<MemberDistribu
         .persistent()
         .get(&member_dist_key)
         .unwrap_or(Vec::new(&env))
+}
+
+pub fn get_member_distrib_paginated(
+    env: Env,
+    member: Address,
+    offset: u32,
+    limit: u32,
+) -> (Vec<MemberDistributionRecord>, u32) {
+    let member_dist_key = DataKey::MemberDistributions(member);
+    let distributions: Vec<MemberDistributionRecord> = env
+        .storage()
+        .persistent()
+        .get(&member_dist_key)
+        .unwrap_or(Vec::new(&env));
+
+    let total = distributions.len();
+    if total == 0 {
+        return (Vec::new(&env), 0);
+    }
+
+    bump_persistent(&env, &member_dist_key);
+
+    // Cap limit at 20
+    let actual_limit = limit.min(20);
+    let mut paginated_distributions = Vec::new(&env);
+
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+        for i in offset..end {
+            if let Some(distribution) = distributions.get(i) {
+                paginated_distributions.push_back(distribution);
+            }
+        }
+    }
+
+    (paginated_distributions, total)
 }
 
 // ============================================================================
@@ -1427,6 +1794,9 @@ pub fn update_members(
     AutoshareUpdated {
         id: id.clone(),
         updater: caller,
+        name_updated: false,
+        metadata_updated: false,
+        new_creator: None,
     }
     .publish(&env);
     Ok(())
@@ -1464,6 +1834,40 @@ pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(),
         creator: caller,
     }
     .publish(&env);
+    Ok(())
+}
+
+/// Deactivates a payment group so it can no longer accept new distributions or member changes.
+/// Emits a dedicated `PaymentGroupDeactivated` event with indexed group id and caller for off-chain indexing.
+pub fn deactivate_payment_group(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupAlreadyInactive);
+    }
+
+    let member_count = details.members.len();
+    details.is_active = false;
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    emit_payment_group_deactivated(&env, id, caller, member_count);
     Ok(())
 }
 
@@ -1541,6 +1945,110 @@ pub fn update_group_name(
         updater: caller,
     }
     .publish(&env);
+    Ok(())
+}
+
+/// Updates the configurable settings of an existing payment group.
+///
+/// This function allows the group creator to update the group name, metadata, and 
+/// transfer ownership (admin rotation) in a single transaction. Only the current
+/// creator is authorized to perform these updates.
+///
+/// # Arguments
+///
+/// * `env` - The Soroban environment.
+/// * `id` - The unique 32-byte identifier of the payment group.
+/// * `caller` - The address of the current creator. Must authorize this call.
+/// * `new_name` - Optional new name for the group (1–60 non-whitespace characters).
+/// * `new_metadata` - Optional new metadata string for the group.
+/// * `new_creator` - Optional new address to transfer group ownership to.
+///
+/// # Returns
+///
+/// Returns `Ok(())` on success.
+///
+/// # Events
+///
+/// Emits [`AutoshareUpdated`] with detailed change flags and new values.
+///
+/// # Errors
+///
+/// | Error | Condition |
+/// |---|---|
+/// | `ContractPaused` | The contract is currently paused. |
+/// | `NotFound` | No group exists with the given `id`. |
+/// | `Unauthorized` | The `caller` is not the current group creator. |
+/// | `GroupInactive` | The group is currently deactivated. |
+/// | `EmptyName` | The `new_name` is empty or whitespace-only. |
+pub fn update_payment_group(
+    env: Env,
+    id: BytesN<32>,
+    caller: Address,
+    new_name: Option<String>,
+    new_metadata: Option<String>,
+    new_creator: Option<Address>,
+) -> Result<(), Error> {
+    caller.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    let mut details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .ok_or(Error::NotFound)?;
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    if !details.is_active {
+        return Err(Error::GroupInactive);
+    }
+
+    let mut updated = false;
+    let mut name_updated = false;
+    let mut metadata_updated = false;
+    let mut new_creator_addr: Option<Address> = None;
+
+    if let Some(name) = new_name {
+        if !is_valid_name(&name) {
+            return Err(Error::EmptyName);
+        }
+        details.name = name;
+        updated = true;
+        name_updated = true;
+    }
+
+    if let Some(metadata) = new_metadata {
+        details.metadata = metadata;
+        updated = true;
+        metadata_updated = true;
+    }
+
+    if let Some(creator) = new_creator {
+        details.creator = creator.clone();
+        updated = true;
+        new_creator_addr = Some(creator);
+    }
+
+    if updated {
+        env.storage().persistent().set(&key, &details);
+        bump_persistent(&env, &key);
+
+        AutoshareUpdated {
+            id,
+            updater: caller,
+            name_updated,
+            metadata_updated,
+            new_creator: new_creator_addr,
+        }
+        .publish(&env);
+    }
+
     Ok(())
 }
 
@@ -1999,6 +2507,45 @@ pub fn get_member_earnings(env: Env, member: Address, group_id: BytesN<32>) -> i
         bump_persistent(&env, &key);
     }
     earnings
+}
+
+/// Returns a breakdown of a member's earnings across all groups they belong to.
+/// Each entry in the returned Vec is a (group_id, earnings) tuple.
+/// Only groups where the member has earned more than zero are included.
+/// Returns an empty Vec if the member has no groups or no positive earnings.
+pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<32>, i128)> {
+    // Step 1: Read the list of group IDs this member belongs to.
+    // MemberGroups is updated whenever a member is added/removed from a group.
+    let member_groups_key = DataKey::MemberGroups(member.clone());
+    let group_ids: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&member_groups_key)
+        .unwrap_or(Vec::new(&env));
+
+    // If the member has no groups at all, return empty immediately.
+    if group_ids.is_empty() {
+        return Vec::new(&env);
+    }
+
+    // Bump TTL for the member groups index since we just read it.
+    bump_persistent(&env, &member_groups_key);
+
+    // Step 2: For each group, look up the member's earnings in that group.
+    // Step 3: Filter out groups where earnings are zero — only keep positive entries.
+    let mut breakdown: Vec<(BytesN<32>, i128)> = Vec::new(&env);
+    for group_id in group_ids.iter() {
+        let earnings_key = DataKey::MemberGroupEarnings(member.clone(), group_id.clone());
+        let earnings: i128 = env.storage().persistent().get(&earnings_key).unwrap_or(0);
+
+        // Only include this group if the member has actually earned something from it.
+        if earnings > 0 {
+            bump_persistent(&env, &earnings_key);
+            breakdown.push_back((group_id, earnings));
+        }
+    }
+
+    breakdown
 }
 
 pub fn get_fundraising_status(env: Env, id: BytesN<32>) -> FundraisingConfig {
@@ -2652,7 +3199,11 @@ pub fn get_active_fundraisings(env: Env) -> Vec<ActiveFundraising> {
 
     for id in group_ids.iter() {
         let fundraising_key = DataKey::GroupFundraising(id.clone());
-        if let Some(config) = env.storage().persistent().get::<_, FundraisingConfig>(&fundraising_key) {
+        if let Some(config) = env
+            .storage()
+            .persistent()
+            .get::<_, FundraisingConfig>(&fundraising_key)
+        {
             if config.is_active {
                 result.push_back(ActiveFundraising {
                     group_id: id.clone(),
@@ -2706,4 +3257,57 @@ pub fn get_group_member_count(env: Env, id: BytesN<32>) -> Result<u32, Error> {
         .get(&key)
         .ok_or(Error::NotFound)?;
     Ok(details.members.len() as u32)
+}
+
+/// Cancels an active fundraising campaign.
+/// Only the group creator can cancel. Does NOT refund contributions already distributed to members.
+pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) -> Result<(), Error> {
+    // 1. Require caller authentication
+    caller.require_auth();
+
+    // 2. Check if contract is paused
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    // 3. Verify group exists and caller is the creator
+    let autoshare_key = DataKey::AutoShare(id.clone());
+    let details: AutoShareDetails = env
+        .storage()
+        .persistent()
+        .get(&autoshare_key)
+        .ok_or(Error::NotFound)?;
+    bump_persistent(&env, &autoshare_key);
+
+    if details.creator != caller {
+        return Err(Error::Unauthorized);
+    }
+
+    // 4. Read fundraising config and verify it's active
+    let fundraising_key = DataKey::GroupFundraising(id.clone());
+    let mut fundraising_config: FundraisingConfig = env
+        .storage()
+        .persistent()
+        .get(&fundraising_key)
+        .ok_or(Error::FundraisingNotActive)?;
+    bump_persistent(&env, &fundraising_key);
+
+    if !fundraising_config.is_active {
+        return Err(Error::FundraisingNotActive);
+    }
+
+    // 5. Set is_active to false
+    let total_raised_at_cancellation = fundraising_config.total_raised;
+    fundraising_config.is_active = false;
+
+    // 6. Store updated config
+    env.storage()
+        .persistent()
+        .set(&fundraising_key, &fundraising_config);
+    bump_persistent(&env, &fundraising_key);
+
+    // 7. Emit FundraisingCancelled event
+    emit_fundraising_cancelled(&env, id.clone(), total_raised_at_cancellation);
+
+    Ok(())
 }

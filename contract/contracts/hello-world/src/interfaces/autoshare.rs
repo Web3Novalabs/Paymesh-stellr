@@ -45,7 +45,33 @@ pub trait AutoShareTrait {
     // AutoShare Group Management
     // ============================================================================
 
-    /// Creates a new AutoShare plan with payment.
+    /// Creates a new payment group with a designated admin (creator), member limit, and initial
+    /// subscription configuration.
+    ///
+    /// The creator pays `usage_count × usage_fee` tokens upfront. The group starts active with
+    /// an empty member list; add members afterwards with `add_group_member` or `batch_add_members`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `id` - Unique 32-byte group identifier. Must not already exist.
+    /// * `name` - Human-readable name (1–60 non-whitespace characters).
+    /// * `creator` - Group owner address. Must authorize this call.
+    /// * `usage_count` - Number of distributions to pre-purchase (≥ 1).
+    /// * `payment_token` - Fee token; must be on the supported-token list.
+    ///
+    /// # Events
+    ///
+    /// Emits `AutoshareCreated { creator, id }`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ContractPaused`, `EmptyName`, `AlreadyExists`, `InvalidUsageCount`, or
+    /// `UnsupportedToken` on validation failure.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the token transfer fails (e.g. insufficient balance).
     fn create(
         env: Env,
         id: BytesN<32>,
@@ -61,6 +87,13 @@ pub trait AutoShareTrait {
 
     /// Retrieves an existing AutoShare plan.
     fn get(env: Env, id: BytesN<32>) -> AutoShareDetails;
+
+    /// Retrieves a lightweight summary of group metadata, status, and statistics.
+    ///
+    /// Returns essential group information for efficient frontend displays and
+    /// status checks. Includes member count, active status, fundraising status,
+    /// and distribution statistics without loading full member details.
+    fn get_group_summary(env: Env, id: BytesN<32>) -> crate::base::types::GroupSummary;
 
     /// Retrieves all AutoShare groups.
     fn get_all_groups(env: Env) -> Vec<AutoShareDetails>;
@@ -96,8 +129,24 @@ pub trait AutoShareTrait {
     /// Returns a specific member's share (percentage) in a group.
     fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32;
 
-    /// Adds a member to a group with specified percentage.
-    /// Only the group creator (caller) may add members.
+    /// Adds a new member to an existing AutoShare payment group.
+    ///
+    /// This function enables group creators to add individual members with specified
+    /// percentage shares. Comprehensive validation ensures data integrity including
+    /// capacity limits, duplicate prevention, and percentage distribution validity.
+    ///
+    /// # Authorization
+    /// Only the group creator can add members. The caller must be authenticated.
+    ///
+    /// # Validation
+    /// - Contract must not be paused
+    /// - Group must exist and be active
+    /// - Address must not already be a member
+    /// - Group capacity must not be exceeded
+    /// - Total member percentages must equal 100% after addition
+    ///
+    /// # Events
+    /// Emits `MemberAdded`, `AutoshareUpdated`, and potentially `CreatorIsMember`.
     fn add_group_member(
         env: Env,
         id: BytesN<32>,
@@ -117,11 +166,35 @@ pub trait AutoShareTrait {
     /// Deactivates a group. Only the creator can deactivate.
     fn deactivate_group(env: Env, id: BytesN<32>, caller: Address);
 
+    /// Deactivates a payment group so it can no longer accept new distributions or member changes.
+    /// Only the creator can deactivate.
+    fn deactivate_payment_group(env: Env, id: BytesN<32>, caller: Address);
+
     /// Activates a group. Only the creator can activate.
     fn activate_group(env: Env, id: BytesN<32>, caller: Address);
 
     /// Updates the name of a group. Only the creator can update.
     fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String);
+
+    /// Updates the settings of a payment group (name, metadata, and creator).
+    ///
+    /// Allows the creator to modify group details and perform admin rotation.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Unique group identifier.
+    /// * `caller` - Current group creator address. Must authorize.
+    /// * `new_name` - Optional updated name.
+    /// * `new_metadata` - Optional updated metadata.
+    /// * `new_creator` - Optional new creator address for ownership transfer.
+    fn update_payment_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_name: Option<String>,
+        new_metadata: Option<String>,
+        new_creator: Option<Address>,
+    );
 
     /// Returns whether a group is active.
     fn is_group_active(env: Env, id: BytesN<32>) -> bool;
@@ -205,8 +278,24 @@ pub trait AutoShareTrait {
     /// Returns all distribution history for a group.
     fn get_group_distributions(env: Env, id: BytesN<32>) -> Vec<DistributionHistory>;
 
+    /// Returns paginated distribution history for a group.
+    fn get_group_distrib_history_page(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<DistributionRecord>, u32);
+
     /// Returns all distribution history for a member.
     fn get_member_distributions(env: Env, member: Address) -> Vec<DistributionRecord>;
+
+    /// Returns paginated distribution history for a member.
+    fn get_member_distrib_paginated(
+        env: Env,
+        member: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<DistributionRecord>, u32);
 
     // ============================================================================
     // Usage Tracking
@@ -254,4 +343,7 @@ pub trait AutoShareTrait {
 
     /// Returns the current minimum contribution amount.
     fn get_min_contribution(env: Env) -> i128;
+
+    /// Cancels an active fundraising campaign. Only the group creator can cancel.
+    fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address);
 }
