@@ -233,6 +233,12 @@ impl AutoShareContract {
         autoshare_logic::get_group_members(env, id).unwrap()
     }
 
+    /// Returns the cumulative number of times `get_group_members` has been called
+    /// for a specific group. Useful for off-chain analytics.
+    pub fn get_group_members_query_count(env: Env, id: BytesN<32>) -> u64 {
+        autoshare_logic::get_group_members_query_count(env, id)
+    }
+
     pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32 {
         autoshare_logic::get_member_percentage(env, id, member).unwrap()
     }
@@ -907,3 +913,5 @@ mod update_payment_group_boundary_test;
 #[cfg(test)]
 #[path = "tests/deposit_funds_test.rs"]
 mod deposit_funds_test;
+#[path = "tests/get_group_members_diagnostics_test.rs"]
+mod get_group_members_diagnostics_test;
