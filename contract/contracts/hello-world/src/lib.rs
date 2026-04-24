@@ -443,6 +443,22 @@ impl AutoShareContract {
         autoshare_logic::get_usage_fee(env)
     }
 
+    /// Sets the protocol fee percentage (0–100). Pass `group_id = None` for the global
+    /// default, or `Some(id)` to set a group-specific override. Admin only.
+    pub fn set_protocol_fee(
+        env: Env,
+        admin: Address,
+        fee_percent: u32,
+        group_id: Option<BytesN<32>>,
+    ) {
+        autoshare_logic::set_protocol_fee(env, admin, fee_percent, group_id).unwrap();
+    }
+
+    /// Returns the effective protocol fee percentage for a group (or the global default).
+    pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+        autoshare_logic::get_protocol_fee(env, group_id)
+    }
+
     /// Sets the maximum number of members per group (admin only).
     pub fn set_max_members(env: Env, admin: Address, max: u32) {
         autoshare_logic::set_max_members(env, admin, max).unwrap();
@@ -866,3 +882,7 @@ mod update_payment_group_test;
 #[cfg(test)]
 #[path = "tests/update_payment_group_boundary_test.rs"]
 mod update_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/set_protocol_fee_test.rs"]
+mod set_protocol_fee_test;

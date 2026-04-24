@@ -35,6 +35,8 @@ pub enum DataKey {
     GroupDistributions(BytesN<32>),
     MaxMembers,
     MinContribution,
+    ProtocolFee,
+    GroupProtocolFee(BytesN<32>),
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -686,7 +688,7 @@ pub fn add_group_member(
 
     AutoshareUpdated {
         id: id.clone(),
-        updater: caller,
+        updater: caller.clone(),
         name_updated: false,
         metadata_updated: false,
         new_creator: None,
@@ -1137,6 +1139,55 @@ pub fn get_usage_fee(env: Env) -> u32 {
         bump_persistent(&env, &fee_key);
     }
     result.unwrap_or(10u32)
+}
+
+/// Sets the global protocol fee percentage (0–100). Pass `group_id = None` for the global
+/// default, or `Some(id)` to override the fee for a specific group. Admin only.
+pub fn set_protocol_fee(
+    env: Env,
+    admin: Address,
+    fee_percent: u32,
+    group_id: Option<BytesN<32>>,
+) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    if fee_percent > 100 {
+        return Err(Error::InvalidInput);
+    }
+
+    match group_id {
+        Some(id) => {
+            let key = DataKey::GroupProtocolFee(id);
+            env.storage().persistent().set(&key, &fee_percent);
+            bump_persistent(&env, &key);
+        }
+        None => {
+            let key = DataKey::ProtocolFee;
+            env.storage().persistent().set(&key, &fee_percent);
+            bump_persistent(&env, &key);
+        }
+    }
+
+    Ok(())
+}
+
+/// Returns the effective protocol fee percentage for a group.
+/// Falls back to the global protocol fee if no group-specific override is set.
+pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+    if let Some(id) = group_id {
+        let group_key = DataKey::GroupProtocolFee(id);
+        if let Some(fee) = env.storage().persistent().get::<DataKey, u32>(&group_key) {
+            bump_persistent(&env, &group_key);
+            return fee;
+        }
+    }
+    let global_key = DataKey::ProtocolFee;
+    let result: Option<u32> = env.storage().persistent().get(&global_key);
+    if result.is_some() {
+        bump_persistent(&env, &global_key);
+    }
+    result.unwrap_or(0u32)
 }
 
 pub fn set_max_members(env: Env, admin: Address, max: u32) -> Result<(), Error> {
