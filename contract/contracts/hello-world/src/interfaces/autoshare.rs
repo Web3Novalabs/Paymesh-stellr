@@ -168,6 +168,26 @@ pub trait AutoShareTrait {
     /// Updates the name of a group. Only the creator can update.
     fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String);
 
+    /// Updates the settings of a payment group (name, metadata, and creator).
+    ///
+    /// Allows the creator to modify group details and perform admin rotation.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Unique group identifier.
+    /// * `caller` - Current group creator address. Must authorize.
+    /// * `new_name` - Optional updated name.
+    /// * `new_metadata` - Optional updated metadata.
+    /// * `new_creator` - Optional new creator address for ownership transfer.
+    fn update_payment_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_name: Option<String>,
+        new_metadata: Option<String>,
+        new_creator: Option<Address>,
+    );
+
     /// Returns whether a group is active.
     fn is_group_active(env: Env, id: BytesN<32>) -> bool;
 

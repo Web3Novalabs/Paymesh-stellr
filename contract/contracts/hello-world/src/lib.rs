@@ -333,6 +333,27 @@ impl AutoShareContract {
         autoshare_logic::update_group_name(env, id, caller, new_name).unwrap();
     }
 
+    /// Updates the settings of an existing payment group (name, metadata, and creator).
+    ///
+    /// This is a consolidated update method that allows the group creator to 
+    /// modify multiple settings or transfer ownership in a single transaction.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the caller is not the creator, if the contract is paused, 
+    /// or if the group is inactive.
+    pub fn update_payment_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_name: Option<String>,
+        new_metadata: Option<String>,
+        new_creator: Option<Address>,
+    ) {
+        autoshare_logic::update_payment_group(env, id, caller, new_name, new_metadata, new_creator)
+            .unwrap();
+    }
+
     /// Transfers group ownership (creator role) to a new address.
     pub fn transfer_group_ownership(
         env: Env,
@@ -837,3 +858,11 @@ mod group_lifecycle_test;
 #[cfg(test)]
 #[path = "tests/deactivate_payment_group_boundary_test.rs"]
 mod deactivate_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/update_payment_group_test.rs"]
+mod update_payment_group_test;
+
+#[cfg(test)]
+#[path = "tests/update_payment_group_boundary_test.rs"]
+mod update_payment_group_boundary_test;

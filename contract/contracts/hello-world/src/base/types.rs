@@ -5,6 +5,7 @@ use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
 pub struct AutoShareDetails {
     pub id: BytesN<32>,
     pub name: String,
+    pub metadata: String,
     pub creator: Address,
     pub usage_count: u32,
     pub total_usages_paid: u32,
@@ -116,6 +117,7 @@ pub struct ActiveFundraising {
 pub struct GroupSummary {
     pub id: BytesN<32>,
     pub name: String,
+    pub metadata: String,
     pub creator: Address,
     pub member_count: u32,
     pub is_active: bool,

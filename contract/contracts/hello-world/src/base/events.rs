@@ -52,12 +52,16 @@ pub struct ContractPaused {}
 #[derive(Clone)]
 pub struct ContractUnpaused {}
 
-#[contractevent(data_format = "single-value")]
+#[contractevent]
 #[derive(Clone)]
 pub struct AutoshareUpdated {
     #[topic]
-    pub updater: Address,
     pub id: BytesN<32>,
+    #[topic]
+    pub updater: Address,
+    pub name_updated: bool,
+    pub metadata_updated: bool,
+    pub new_creator: Option<Address>,
 }
 
 #[contractevent(data_format = "single-value")]
