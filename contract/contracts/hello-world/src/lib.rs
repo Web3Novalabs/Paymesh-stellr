@@ -157,8 +157,39 @@ impl AutoShareContract {
         autoshare_logic::is_group_member(env, id, address).unwrap()
     }
 
+    /// Returns all members of a group.
+    ///
+    /// ### Arguments
+    /// * `id` - The unique 32-byte identifier of the AutoShare group.
+    ///
+    /// ### Returns
+    /// * `Vec<base::types::GroupMember>` - A vector containing all group members and their percentages.
+    ///
+    /// ### Panics
+    /// * Panics with `Error::NotFound` if the group does not exist.
     pub fn get_group_members(env: Env, id: BytesN<32>) -> Vec<base::types::GroupMember> {
         autoshare_logic::get_group_members(env, id).unwrap()
+    }
+
+    /// Returns a paginated list of all current members in a specific group.
+    ///
+    /// ### Arguments
+    /// * `id` - The unique 32-byte identifier of the AutoShare group.
+    /// * `offset` - The starting index for pagination.
+    /// * `limit` - The maximum number of members to return (capped at 20).
+    ///
+    /// ### Returns
+    /// * `base::types::MemberPage` - A struct containing the paginated list of members, total count, offset, and actual limit.
+    ///
+    /// ### Panics
+    /// * Panics with `Error::NotFound` if the group does not exist.
+    pub fn get_group_members_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> base::types::MemberPage {
+        autoshare_logic::get_group_members_paginated(env, id, offset, limit).unwrap()
     }
 
     pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32 {
@@ -545,6 +576,10 @@ pub mod test_utils;
 #[cfg(test)]
 #[path = "tests/get_groups_by_member_test.rs"]
 mod get_groups_by_member_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_test.rs"]
+mod get_group_members_test;
 
 #[cfg(test)]
 #[path = "tests/test_utils_test.rs"]

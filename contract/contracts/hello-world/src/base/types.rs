@@ -79,6 +79,15 @@ pub struct GroupPage {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MemberPage {
+    pub members: Vec<GroupMember>,
+    pub total: u32,
+    pub offset: u32,
+    pub limit: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FundraisingConfig {
     pub target_amount: i128,
     pub total_raised: i128,

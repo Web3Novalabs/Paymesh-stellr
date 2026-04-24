@@ -9,7 +9,7 @@ use crate::base::events::{
 use crate::base::types::{
     ActiveFundraising, AutoShareDetails, DistributionHistory, DistributionRecord,
     FundraisingConfig, FundraisingContribution, GroupMember, GroupPage, GroupStats, MemberAmount,
-    MemberDistributionRecord, PaymentHistory,
+    MemberDistributionRecord, MemberPage, PaymentHistory,
 };
 use soroban_sdk::{contracttype, token, Address, BytesN, Env, String, Vec};
 
@@ -335,9 +335,61 @@ pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> Result<boo
     Ok(false)
 }
 
+/// Returns all members of a group.
+///
+/// ### Arguments
+/// * `id` - The unique 32-byte identifier of the AutoShare group.
+///
+/// ### Returns
+/// * `Result<Vec<GroupMember>, Error>` - A vector containing all group members and their percentages, 
+///   or an error if the group is not found.
+///
+/// ### Panics
+/// * This function does not panic but returns `Error::NotFound` if the group ID is invalid.
 pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, Error> {
     let details = get_autoshare(env, id)?;
     Ok(details.members)
+}
+
+/// Returns a paginated list of members for a specific group.
+///
+/// ### Arguments
+/// * `id` - The unique 32-byte identifier of the AutoShare group.
+/// * `offset` - The starting index for the page.
+/// * `limit` - The maximum number of members to return (capped at 20).
+///
+/// ### Returns
+/// * `Result<MemberPage, Error>` - A page of group members including total count, or an error if the group is not found.
+///
+/// ### Panics
+/// * This function does not panic but returns `Error::NotFound` if the group ID is invalid.
+pub fn get_group_members_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> Result<MemberPage, Error> {
+    let details = get_autoshare(env, id)?;
+    let total = details.members.len() as u32;
+    let actual_limit = limit.min(20);
+
+    let mut members = Vec::new(&env);
+    if actual_limit > 0 && offset < total {
+        let end = offset.saturating_add(actual_limit).min(total);
+
+        for i in offset..end {
+            if let Some(member) = details.members.get(i) {
+                members.push_back(member);
+            }
+        }
+    }
+
+    Ok(MemberPage {
+        members,
+        total,
+        offset,
+        limit: actual_limit,
+    })
 }
 
 pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {

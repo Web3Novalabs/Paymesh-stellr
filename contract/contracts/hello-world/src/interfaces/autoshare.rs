@@ -2,7 +2,7 @@ use soroban_sdk::{Address, BytesN, Env, String, Vec};
 
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
-    FundraisingContribution, GroupMember, PaymentHistory,
+    FundraisingContribution, GroupMember, MemberPage, PaymentHistory,
 };
 
 /// AutoShareTrait defines the interface for the AutoShare contract.
@@ -84,6 +84,14 @@ pub trait AutoShareTrait {
 
     /// Returns all members of a group.
     fn get_group_members(env: Env, id: BytesN<32>) -> Vec<GroupMember>;
+
+    /// Returns a paginated list of all current members in a specific group.
+    fn get_group_members_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> MemberPage;
 
     /// Returns a specific member's share (percentage) in a group.
     fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32;
