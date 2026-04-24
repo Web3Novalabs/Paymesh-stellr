@@ -61,9 +61,45 @@ impl AutoShareContract {
     // AutoShare Group Management
     // ============================================================================
 
-    /// Creates a new AutoShare plan with payment.
-    /// Requirement: create_autoshare should store data, accept payment, and emit an event.
+    /// Creates a new payment group with a designated admin (creator), member limit, and initial
+    /// subscription configuration.
+    ///
+    /// The creator pays `usage_count × usage_fee` tokens upfront. The group starts active with
+    /// an empty member list; add members afterwards with `add_group_member` or `batch_add_members`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `id` - Unique 32-byte group identifier. Must not already exist.
+    /// * `name` - Human-readable name (1–60 non-whitespace characters).
+    /// * `creator` - Group owner address. Must authorize this call.
+    /// * `usage_count` - Number of distributions to pre-purchase (≥ 1).
+    /// * `payment_token` - Fee token; must be on the supported-token list.
+    ///
+    /// # Events
+    ///
+    /// Emits `AutoshareCreated { creator, id }`.
+    ///
+    /// # Panics
+    ///
+    /// Panics on validation failure or if the token transfer fails.
     pub fn create(
+        env: Env,
+        id: BytesN<32>,
+        name: String,
+        creator: Address,
+        usage_count: u32,
+        payment_token: Address,
+    ) {
+        autoshare_logic::create_autoshare(env, id, name, creator, usage_count, payment_token)
+            .unwrap();
+    }
+
+    /// Creates a payment group (AutoShare plan). Semantically identical to [`Self::create`].
+    ///
+    /// This entrypoint exists for integrators and documentation that refer to
+    /// “payment group” lifecycle naming.
+    pub fn create_payment_group(
         env: Env,
         id: BytesN<32>,
         name: String,
@@ -90,6 +126,42 @@ impl AutoShareContract {
     /// Requirement: get_autoshare should return the plan details.
     pub fn get(env: Env, id: BytesN<32>) -> base::types::AutoShareDetails {
         autoshare_logic::get_autoshare(env, id).unwrap()
+    }
+
+    /// Retrieves a lightweight summary of payment group metadata, status, and statistics.
+    ///
+    /// This function provides efficient access to essential group information for
+    /// frontend displays and status checks. Returns a `GroupSummary` struct containing
+    /// id, name, creator, member count, active status, remaining usages,
+    /// fundraising status, and total distributions processed.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    /// * `id` - The unique identifier of the AutoShare payment group
+    ///
+    /// # Returns
+    ///
+    /// Returns a `GroupSummary` struct with all essential group metadata.
+    ///
+    /// # Authorization
+    ///
+    /// Public read operation - no authorization required.
+    ///
+    /// # Performance
+    ///
+    /// Optimized for low-latency group listings and status displays.
+    /// Reduces RPC calls needed for group cards in frontend applications.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying storage operation fails (group not found).
+    ///
+    /// # See Also
+    ///
+    /// `get()` - Returns complete group details including full member list
+    pub fn get_group_summary(env: Env, id: BytesN<32>) -> base::types::GroupSummary {
+        autoshare_logic::get_group_summary(env, id).unwrap()
     }
 
     /// Retrieves all AutoShare groups.
@@ -165,8 +237,45 @@ impl AutoShareContract {
         autoshare_logic::get_member_percentage(env, id, member).unwrap()
     }
 
-    /// Adds a member to a group with specified percentage.
-    /// Only the group creator (caller) may add members.
+    /// Adds a new member to an existing AutoShare payment group.
+    ///
+    /// This function allows group creators to add individual members to their groups
+    /// with specified percentage shares. The operation includes comprehensive validation
+    /// including capacity limits, duplicate prevention, and percentage integrity checks.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    /// * `id` - The unique identifier of the AutoShare group
+    /// * `caller` - The group creator's address (must be authenticated)
+    /// * `address` - The Stellar address of the new member
+    /// * `percentage` - The percentage share (1-99) for payment distributions
+    ///
+    /// # Authorization
+    ///
+    /// Only the group creator can call this function. The caller must provide
+    /// valid Soroban authentication.
+    ///
+    /// # Validation
+    ///
+    /// - Contract must not be paused
+    /// - Group must exist and be active
+    /// - Caller must be the group creator
+    /// - Address must not already be a member
+    /// - Group must not exceed maximum member capacity
+    /// - Total percentages must sum to 100% after addition
+    ///
+    /// # Events
+    ///
+    /// Emits `MemberAdded`, `AutoshareUpdated`, and potentially `CreatorIsMember` events.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying logic returns an error (validation failures).
+    ///
+    /// # See Also
+    ///
+    /// For adding multiple members at once, see `batch_add_members`.
     pub fn add_group_member(
         env: Env,
         id: BytesN<32>,
@@ -194,9 +303,24 @@ impl AutoShareContract {
         autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
     }
 
+    /// Removes a member from a payment group. Semantically identical to [`Self::remove_group_member`].
+    pub fn remove_member_from_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        member_address: Address,
+    ) {
+        autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
+    }
+
     /// Deactivates a group. Only the creator can deactivate.
     pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::deactivate_group(env, id, caller).unwrap();
+    }
+
+    /// Deactivates a payment group so it can no longer accept new distributions or member changes.
+    pub fn deactivate_payment_group(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::deactivate_payment_group(env, id, caller).unwrap();
     }
 
     /// Activates a group. Only the creator can activate.
@@ -207,6 +331,27 @@ impl AutoShareContract {
     /// Updates the name of a group. Only the creator can update.
     pub fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String) {
         autoshare_logic::update_group_name(env, id, caller, new_name).unwrap();
+    }
+
+    /// Updates the settings of an existing payment group (name, metadata, and creator).
+    ///
+    /// This is a consolidated update method that allows the group creator to 
+    /// modify multiple settings or transfer ownership in a single transaction.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the caller is not the creator, if the contract is paused, 
+    /// or if the group is inactive.
+    pub fn update_payment_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_name: Option<String>,
+        new_metadata: Option<String>,
+        new_creator: Option<Address>,
+    ) {
+        autoshare_logic::update_payment_group(env, id, caller, new_name, new_metadata, new_creator)
+            .unwrap();
     }
 
     /// Transfers group ownership (creator role) to a new address.
@@ -390,6 +535,16 @@ impl AutoShareContract {
         autoshare_logic::get_group_distributions(env, id)
     }
 
+    /// Returns paginated distribution history for a group.
+    pub fn get_group_distrib_history_page(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::DistributionRecord>, u32) {
+        autoshare_logic::get_distribution_history_paginated(env, id, offset, limit)
+    }
+
     /// Returns the total amount distributed by a group across all tokens.
     pub fn get_group_total_distributed(env: Env, id: BytesN<32>) -> i128 {
         autoshare_logic::get_group_total_distributed(env, id)
@@ -401,6 +556,16 @@ impl AutoShareContract {
         member: Address,
     ) -> Vec<base::types::MemberDistributionRecord> {
         autoshare_logic::get_member_distributions(env, member)
+    }
+
+    /// Returns paginated distribution history for a member.
+    pub fn get_member_distrib_paginated(
+        env: Env,
+        member: Address,
+        offset: u32,
+        limit: u32,
+    ) -> (Vec<base::types::MemberDistributionRecord>, u32) {
+        autoshare_logic::get_member_distrib_paginated(env, member, offset, limit)
     }
 
     // ============================================================================
@@ -420,6 +585,13 @@ impl AutoShareContract {
     /// Returns the total earnings for a member from a specific group.
     pub fn get_member_earnings(env: Env, member: Address, group_id: BytesN<32>) -> i128 {
         autoshare_logic::get_member_earnings(env, member, group_id)
+    }
+
+    /// Returns a per-group earnings breakdown for a member.
+    /// Each entry is a (group_id, earnings) tuple — only groups with earnings > 0 are included.
+    /// Returns an empty Vec if the member has no groups or has not earned anything yet.
+    pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<32>, i128)> {
+        autoshare_logic::get_member_earnings_breakdown(env, member)
     }
 
     /// Returns the fundraising status for a group.
@@ -543,6 +715,11 @@ impl AutoShareContract {
     pub fn get_group_member_count(env: Env, id: BytesN<32>) -> u32 {
         autoshare_logic::get_group_member_count(env, id).unwrap_or(0)
     }
+
+    /// Cancels an active fundraising campaign. Only the group creator can cancel.
+    pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) {
+        autoshare_logic::cancel_fundraising(env, id, caller).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -577,6 +754,10 @@ mod distribute_test;
 #[cfg(test)]
 #[path = "tests/earnings_test.rs"]
 mod earnings_test;
+
+#[cfg(test)]
+#[path = "tests/earnings_breakdown_test.rs"]
+mod earnings_breakdown_test;
 
 #[cfg(test)]
 #[path = "tests/pagination_test.rs"]
@@ -627,6 +808,10 @@ mod topup_subscription_test;
 mod get_active_groups_test;
 
 #[cfg(test)]
+#[path = "tests/get_payment_group_test.rs"]
+mod get_payment_group_test;
+
+#[cfg(test)]
 #[path = "tests/distribution_rounding_test.rs"]
 mod distribution_rounding_test;
 
@@ -637,6 +822,10 @@ mod event_emission_test;
 #[cfg(test)]
 #[path = "tests/delete_group_test.rs"]
 mod delete_group_test;
+
+#[cfg(test)]
+#[path = "tests/deactivate_payment_group_test.rs"]
+mod deactivate_payment_group_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_distribution_interaction_test.rs"]
@@ -665,3 +854,39 @@ mod group_name_validation_test;
 #[cfg(test)]
 #[path = "tests/withdraw_test.rs"]
 mod withdraw_test;
+
+#[cfg(test)]
+#[path = "tests/usage_tracking_test.rs"]
+mod usage_tracking_test;
+
+#[cfg(test)]
+#[path = "tests/group_creation_boundary_test.rs"]
+mod group_creation_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/create_payment_group_test.rs"]
+mod create_payment_group_test;
+
+#[cfg(test)]
+#[path = "tests/create_payment_group_boundary_test.rs"]
+mod create_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/remove_member_from_group_test.rs"]
+mod remove_member_from_group_test;
+
+#[cfg(test)]
+#[path = "tests/group_lifecycle_test.rs"]
+mod group_lifecycle_test;
+
+#[cfg(test)]
+#[path = "tests/deactivate_payment_group_boundary_test.rs"]
+mod deactivate_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/update_payment_group_test.rs"]
+mod update_payment_group_test;
+
+#[cfg(test)]
+#[path = "tests/update_payment_group_boundary_test.rs"]
+mod update_payment_group_boundary_test;
