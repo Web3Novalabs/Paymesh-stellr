@@ -92,7 +92,14 @@ fn test_deactivate_group_with_max_members_succeeds() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 1, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        1,
+        &token,
+    );
 
     let mut members = Vec::new(env);
     for _ in 0..50u32 {
@@ -123,7 +130,14 @@ fn test_deactivate_group_with_zero_remaining_usages_succeeds() {
     let members = two_member_50_50(env);
 
     // Create with 1 usage, distribute once to exhaust it
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 1, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
 
     let sender = test_env.users.get(1).unwrap().clone();
     mint_tokens(env, &token, &sender, 1_000);
@@ -190,7 +204,14 @@ fn test_deactivate_state_is_reversible_via_activate() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        3,
+        &token,
+    );
 
     let usages_before = client.get_remaining_usages(&id);
     let member_count_before = client.get_group_member_count(&id);
@@ -219,7 +240,14 @@ fn test_deactivate_payment_group_blocked_when_contract_paused() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
 
     client.pause(&test_env.admin);
     // Must panic with ContractPaused
@@ -240,7 +268,14 @@ fn test_deactivated_state_persists_across_multiple_reads() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        5,
+        &token,
+    );
 
     client.deactivate_payment_group(&id, &creator);
 
@@ -251,11 +286,17 @@ fn test_deactivated_state_persists_across_multiple_reads() {
 
     let inactive = client.get_inactive_groups();
     let found = inactive.iter().any(|gid| gid == id);
-    assert!(found, "Deactivated group must appear in get_inactive_groups");
+    assert!(
+        found,
+        "Deactivated group must appear in get_inactive_groups"
+    );
 
     let active_groups = client.get_active_groups();
     let still_active = active_groups.iter().any(|g| g.id == id);
-    assert!(!still_active, "Deactivated group must not appear in get_active_groups");
+    assert!(
+        !still_active,
+        "Deactivated group must not appear in get_active_groups"
+    );
 }
 
 // ─── Test 9 ──────────────────────────────────────────────────────────────────
@@ -271,9 +312,30 @@ fn test_deactivate_one_group_does_not_affect_sibling_groups() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id_a = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 1, &token);
-    let id_b = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 2, &token);
-    let id_c = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 3, &token);
+    let id_a = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        1,
+        &token,
+    );
+    let id_b = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
+    let id_c = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        3,
+        &token,
+    );
 
     // Deactivate only group B
     client.deactivate_payment_group(&id_b, &creator);
@@ -297,7 +359,14 @@ fn test_deactivate_after_topup_preserves_usage_count() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        5,
+        &token,
+    );
 
     // Top up with 10 more usages
     let topup_amount: u32 = 10;
@@ -329,7 +398,14 @@ fn test_double_deactivate_payment_group_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
 
     client.deactivate_payment_group(&id, &creator);
     client.deactivate_payment_group(&id, &creator); // must panic
@@ -348,7 +424,14 @@ fn test_deactivate_reactivate_deactivate_round_trip() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        3,
+        &token,
+    );
 
     client.deactivate_payment_group(&id, &creator);
     assert!(!client.is_group_active(&id));
@@ -391,7 +474,14 @@ fn test_deactivate_blocks_update_members() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let members = two_member_50_50(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
 
     client.deactivate_payment_group(&id, &creator);
 
@@ -423,7 +513,14 @@ fn test_deactivate_blocks_remove_group_member() {
         percentage: 50,
     });
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &members, 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &members,
+        2,
+        &token,
+    );
 
     client.deactivate_payment_group(&id, &creator);
     client.remove_group_member(&id, &creator, &member_addr); // must panic

@@ -5,6 +5,7 @@ use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
 pub struct AutoShareDetails {
     pub id: BytesN<32>,
     pub name: String,
+    pub metadata: String,
     pub creator: Address,
     pub usage_count: u32,
     pub total_usages_paid: u32,
@@ -79,6 +80,15 @@ pub struct GroupPage {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MemberPage {
+    pub members: Vec<GroupMember>,
+    pub total: u32,
+    pub offset: u32,
+    pub limit: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FundraisingConfig {
     pub target_amount: i128,
     pub total_raised: i128,
@@ -116,10 +126,21 @@ pub struct ActiveFundraising {
 pub struct GroupSummary {
     pub id: BytesN<32>,
     pub name: String,
+    pub metadata: String,
     pub creator: Address,
     pub member_count: u32,
     pub is_active: bool,
     pub remaining_usages: u32,
     pub has_active_fundraising: bool,
     pub total_distributions: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DepositRecord {
+    pub group_id: BytesN<32>,
+    pub depositor: Address,
+    pub token: Address,
+    pub amount: i128,
+    pub timestamp: u64,
 }

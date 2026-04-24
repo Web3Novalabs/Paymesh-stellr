@@ -61,9 +61,45 @@ impl AutoShareContract {
     // AutoShare Group Management
     // ============================================================================
 
-    /// Creates a new AutoShare plan with payment.
-    /// Requirement: create_autoshare should store data, accept payment, and emit an event.
+    /// Creates a new payment group with a designated admin (creator), member limit, and initial
+    /// subscription configuration.
+    ///
+    /// The creator pays `usage_count × usage_fee` tokens upfront. The group starts active with
+    /// an empty member list; add members afterwards with `add_group_member` or `batch_add_members`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `id` - Unique 32-byte group identifier. Must not already exist.
+    /// * `name` - Human-readable name (1–60 non-whitespace characters).
+    /// * `creator` - Group owner address. Must authorize this call.
+    /// * `usage_count` - Number of distributions to pre-purchase (≥ 1).
+    /// * `payment_token` - Fee token; must be on the supported-token list.
+    ///
+    /// # Events
+    ///
+    /// Emits `AutoshareCreated { creator, id }`.
+    ///
+    /// # Panics
+    ///
+    /// Panics on validation failure or if the token transfer fails.
     pub fn create(
+        env: Env,
+        id: BytesN<32>,
+        name: String,
+        creator: Address,
+        usage_count: u32,
+        payment_token: Address,
+    ) {
+        autoshare_logic::create_autoshare(env, id, name, creator, usage_count, payment_token)
+            .unwrap();
+    }
+
+    /// Creates a payment group (AutoShare plan). Semantically identical to [`Self::create`].
+    ///
+    /// This entrypoint exists for integrators and documentation that refer to
+    /// “payment group” lifecycle naming.
+    pub fn create_payment_group(
         env: Env,
         id: BytesN<32>,
         name: String,
@@ -92,10 +128,38 @@ impl AutoShareContract {
         autoshare_logic::get_autoshare(env, id).unwrap()
     }
 
-    /// Retrieves a lightweight group summary with commonly needed info.
-    /// Returns a single struct with: id, name, creator, member_count, is_active,
-    /// remaining_usages, has_active_fundraising, and total_distributions.
-    /// This reduces the number of RPC calls needed for group cards in the frontend.
+    /// Retrieves a lightweight summary of payment group metadata, status, and statistics.
+    ///
+    /// This function provides efficient access to essential group information for
+    /// frontend displays and status checks. Returns a `GroupSummary` struct containing
+    /// id, name, creator, member count, active status, remaining usages,
+    /// fundraising status, and total distributions processed.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    /// * `id` - The unique identifier of the AutoShare payment group
+    ///
+    /// # Returns
+    ///
+    /// Returns a `GroupSummary` struct with all essential group metadata.
+    ///
+    /// # Authorization
+    ///
+    /// Public read operation - no authorization required.
+    ///
+    /// # Performance
+    ///
+    /// Optimized for low-latency group listings and status displays.
+    /// Reduces RPC calls needed for group cards in frontend applications.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying storage operation fails (group not found).
+    ///
+    /// # See Also
+    ///
+    /// `get()` - Returns complete group details including full member list
     pub fn get_group_summary(env: Env, id: BytesN<32>) -> base::types::GroupSummary {
         autoshare_logic::get_group_summary(env, id).unwrap()
     }
@@ -165,16 +229,69 @@ impl AutoShareContract {
         autoshare_logic::is_group_member(env, id, address).unwrap()
     }
 
+    /// Returns all members of a group.
+    ///
+    /// ### Arguments
+    /// * `id` - The unique 32-byte identifier of the AutoShare group.
+    ///
+    /// ### Returns
+    /// * `Vec<base::types::GroupMember>` - A vector containing all group members and their percentages.
+    ///
+    /// ### Panics
+    /// * Panics with `Error::NotFound` if the group does not exist.
     pub fn get_group_members(env: Env, id: BytesN<32>) -> Vec<base::types::GroupMember> {
         autoshare_logic::get_group_members(env, id).unwrap()
+    }
+
+    /// Returns the cumulative number of times `get_group_members` has been called
+    /// for a specific group. Useful for off-chain analytics.
+    pub fn get_group_members_query_count(env: Env, id: BytesN<32>) -> u64 {
+        autoshare_logic::get_group_members_query_count(env, id)
     }
 
     pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32 {
         autoshare_logic::get_member_percentage(env, id, member).unwrap()
     }
 
-    /// Adds a member to a group with specified percentage.
-    /// Only the group creator (caller) may add members.
+    /// Adds a new member to an existing AutoShare payment group.
+    ///
+    /// This function allows group creators to add individual members to their groups
+    /// with specified percentage shares. The operation includes comprehensive validation
+    /// including capacity limits, duplicate prevention, and percentage integrity checks.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    /// * `id` - The unique identifier of the AutoShare group
+    /// * `caller` - The group creator's address (must be authenticated)
+    /// * `address` - The Stellar address of the new member
+    /// * `percentage` - The percentage share (1-99) for payment distributions
+    ///
+    /// # Authorization
+    ///
+    /// Only the group creator can call this function. The caller must provide
+    /// valid Soroban authentication.
+    ///
+    /// # Validation
+    ///
+    /// - Contract must not be paused
+    /// - Group must exist and be active
+    /// - Caller must be the group creator
+    /// - Address must not already be a member
+    /// - Group must not exceed maximum member capacity
+    /// - Total percentages must sum to 100% after addition
+    ///
+    /// # Events
+    ///
+    /// Emits `MemberAdded`, `AutoshareUpdated`, and potentially `CreatorIsMember` events.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying logic returns an error (validation failures).
+    ///
+    /// # See Also
+    ///
+    /// For adding multiple members at once, see `batch_add_members`.
     pub fn add_group_member(
         env: Env,
         id: BytesN<32>,
@@ -215,6 +332,16 @@ impl AutoShareContract {
         autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
     }
 
+    /// Removes a member from a payment group. Semantically identical to [`Self::remove_group_member`].
+    pub fn remove_member_from_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        member_address: Address,
+    ) {
+        autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
+    }
+
     /// Deactivates a group. Only the creator can deactivate.
     pub fn deactivate_group(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::deactivate_group(env, id, caller).unwrap();
@@ -233,6 +360,27 @@ impl AutoShareContract {
     /// Updates the name of a group. Only the creator can update.
     pub fn update_group_name(env: Env, id: BytesN<32>, caller: Address, new_name: String) {
         autoshare_logic::update_group_name(env, id, caller, new_name).unwrap();
+    }
+
+    /// Updates the settings of an existing payment group (name, metadata, and creator).
+    ///
+    /// This is a consolidated update method that allows the group creator to 
+    /// modify multiple settings or transfer ownership in a single transaction.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the caller is not the creator, if the contract is paused, 
+    /// or if the group is inactive.
+    pub fn update_payment_group(
+        env: Env,
+        id: BytesN<32>,
+        caller: Address,
+        new_name: Option<String>,
+        new_metadata: Option<String>,
+        new_creator: Option<Address>,
+    ) {
+        autoshare_logic::update_payment_group(env, id, caller, new_name, new_metadata, new_creator)
+            .unwrap();
     }
 
     /// Transfers group ownership (creator role) to a new address.
@@ -318,10 +466,25 @@ impl AutoShareContract {
     pub fn set_usage_fee(env: Env, fee: u32, admin: Address) {
         autoshare_logic::set_usage_fee(env, fee, admin).unwrap();
     }
-
     /// Returns the current usage fee.
     pub fn get_usage_fee(env: Env) -> u32 {
         autoshare_logic::get_usage_fee(env)
+    }
+
+    /// Sets the protocol fee percentage (0–100). Pass `group_id = None` for the global
+    /// default, or `Some(id)` to set a group-specific override. Admin only.
+    pub fn set_protocol_fee(
+        env: Env,
+        admin: Address,
+        fee_percent: u32,
+        group_id: Option<BytesN<32>>,
+    ) {
+        autoshare_logic::set_protocol_fee(env, admin, fee_percent, group_id).unwrap();
+    }
+
+    /// Returns the effective protocol fee percentage for a group (or the global default).
+    pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+        autoshare_logic::get_protocol_fee(env, group_id)
     }
 
     /// Sets the maximum number of members per group (admin only).
@@ -332,6 +495,26 @@ impl AutoShareContract {
     /// Returns the current maximum number of members per group.
     pub fn get_max_members(env: Env) -> u32 {
         autoshare_logic::get_max_members(&env)
+    }
+
+    /// Sets the protocol fee percentage (admin only).
+    pub fn set_protocol_fee(env: Env, admin: Address, percentage: u32) {
+        autoshare_logic::set_protocol_fee(env, admin, percentage).unwrap();
+    }
+
+    /// Returns the current global protocol fee percentage.
+    pub fn get_protocol_fee(env: Env) -> u32 {
+        autoshare_logic::get_protocol_fee(env)
+    }
+
+    /// Sets the group-specific protocol fee percentage (admin only).
+    pub fn set_group_protocol_fee(env: Env, admin: Address, id: BytesN<32>, percentage: u32) {
+        autoshare_logic::set_group_protocol_fee(env, admin, id, percentage).unwrap();
+    }
+
+    /// Returns the protocol fee percentage for a specific group.
+    pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32 {
+        autoshare_logic::get_group_protocol_fee(env, id)
     }
 
     // ============================================================================
@@ -397,7 +580,7 @@ impl AutoShareContract {
     }
 
     /// Returns paginated distribution history for a group.
-    pub fn get_distribution_history_paginated(
+    pub fn get_group_distrib_history_page(
         env: Env,
         id: BytesN<32>,
         offset: u32,
@@ -451,10 +634,7 @@ impl AutoShareContract {
     /// Returns a per-group earnings breakdown for a member.
     /// Each entry is a (group_id, earnings) tuple — only groups with earnings > 0 are included.
     /// Returns an empty Vec if the member has no groups or has not earned anything yet.
-    pub fn get_member_earnings_breakdown(
-        env: Env,
-        member: Address,
-    ) -> Vec<(BytesN<32>, i128)> {
+    pub fn get_member_earnings_breakdown(env: Env, member: Address) -> Vec<(BytesN<32>, i128)> {
         autoshare_logic::get_member_earnings_breakdown(env, member)
     }
 
@@ -584,6 +764,39 @@ impl AutoShareContract {
     pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::cancel_fundraising(env, id, caller).unwrap();
     }
+
+    // ============================================================================
+    // Protocol Configuration
+    // ============================================================================
+
+    /// Returns the current protocol fee percentage (in basis points) and the fee recipient.
+    ///
+    /// This is a read-only operation that tracks invocations for off-chain analytics.
+    pub fn get_protocol_fee(env: Env) -> (u32, Address) {
+        let (fee, recipient) = autoshare_logic::get_protocol_fee(env.clone());
+
+        // Internal analytics: track read invocation (Issue #294)
+        crate::base::events::emit_protocol_fee_read(&env, fee, recipient.clone());
+
+        (fee, recipient)
+    }
+
+    /// Sets the protocol fee and recipient address (admin only).
+    /// Add comprehensive Rustdoc (Issue #290).
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `fee` - New fee in basis points (max 10000).
+    /// * `recipient` - New address to receive protocol fees.
+    /// * `admin` - Current contract admin address. Must authorize.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the caller is not the admin or if the fee exceeds 10000 bps.
+    pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) {
+        autoshare_logic::set_protocol_fee(env, fee, recipient, admin).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -606,6 +819,10 @@ pub mod test_utils;
 #[cfg(test)]
 #[path = "tests/get_groups_by_member_test.rs"]
 mod get_groups_by_member_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_test.rs"]
+mod get_group_members_test;
 
 #[cfg(test)]
 #[path = "tests/test_utils_test.rs"]
@@ -700,6 +917,10 @@ mod fundraising_distribution_interaction_test;
 mod transfer_group_ownership_test;
 
 #[cfg(test)]
+#[path = "tests/protocol_fee_test.rs"]
+mod protocol_fee_test;
+
+#[cfg(test)]
 #[path = "tests/fundraising_reset_test.rs"]
 mod fundraising_reset_test;
 
@@ -724,6 +945,18 @@ mod usage_tracking_test;
 mod group_creation_boundary_test;
 
 #[cfg(test)]
+#[path = "tests/create_payment_group_test.rs"]
+mod create_payment_group_test;
+
+#[cfg(test)]
+#[path = "tests/create_payment_group_boundary_test.rs"]
+mod create_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/remove_member_from_group_test.rs"]
+mod remove_member_from_group_test;
+
+#[cfg(test)]
 #[path = "tests/group_lifecycle_test.rs"]
 mod group_lifecycle_test;
 
@@ -732,5 +965,21 @@ mod group_lifecycle_test;
 mod deactivate_payment_group_boundary_test;
 
 #[cfg(test)]
-#[path = "tests/add_member_to_group_test.rs"]
-mod add_member_to_group_test;
+#[path = "tests/update_payment_group_test.rs"]
+mod update_payment_group_test;
+
+#[cfg(test)]
+#[path = "tests/update_payment_group_boundary_test.rs"]
+mod update_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_diagnostics_test.rs"]
+mod get_group_members_diagnostics_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_boundary_test.rs"]
+mod get_group_members_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/protocol_fee_boundary_test.rs"]
+mod protocol_fee_boundary_test;

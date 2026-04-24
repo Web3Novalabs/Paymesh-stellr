@@ -52,12 +52,16 @@ pub struct ContractPaused {}
 #[derive(Clone)]
 pub struct ContractUnpaused {}
 
-#[contractevent(data_format = "single-value")]
+#[contractevent]
 #[derive(Clone)]
 pub struct AutoshareUpdated {
     #[topic]
-    pub updater: Address,
     pub id: BytesN<32>,
+    #[topic]
+    pub updater: Address,
+    pub name_updated: bool,
+    pub metadata_updated: bool,
+    pub new_creator: Option<Address>,
 }
 
 #[contractevent(data_format = "single-value")]
@@ -66,6 +70,32 @@ pub struct GroupDeactivated {
     #[topic]
     pub creator: Address,
     pub id: BytesN<32>,
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct PaymentGroupDeactivated {
+    #[topic]
+    pub id: BytesN<32>,
+    #[topic]
+    pub caller: Address,
+    pub member_count: u32,
+    pub timestamp: u64,
+}
+
+pub fn emit_payment_group_deactivated(
+    env: &Env,
+    id: BytesN<32>,
+    caller: Address,
+    member_count: u32,
+) {
+    PaymentGroupDeactivated {
+        id,
+        caller,
+        member_count,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 #[contractevent(data_format = "single-value")]
@@ -159,10 +189,26 @@ pub struct MemberRemoved {
     pub group_id: BytesN<32>,
     #[topic]
     pub member: Address,
+    /// The percentage share held by the member at the time of removal.
+    pub removed_percentage: u32,
+    /// Cumulative earnings accrued by the member in this group at the time of removal.
+    pub pending_earnings: i128,
 }
 
-pub fn emit_member_removed(env: &Env, group_id: BytesN<32>, member: Address) {
-    MemberRemoved { group_id, member }.publish(env);
+pub fn emit_member_removed(
+    env: &Env,
+    group_id: BytesN<32>,
+    member: Address,
+    removed_percentage: u32,
+    pending_earnings: i128,
+) {
+    MemberRemoved {
+        group_id,
+        member,
+        removed_percentage,
+        pending_earnings,
+    }
+    .publish(env);
 }
 
 #[contractevent(data_format = "single-value")]
@@ -325,4 +371,109 @@ pub fn emit_fundraising_cancelled(env: &Env, group_id: BytesN<32>, total_raised:
         total_raised,
     }
     .publish(env);
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct MemberAddedToGroup {
+    #[topic]
+    pub group_id: BytesN<32>,
+    #[topic]
+    pub member: Address,
+    #[topic]
+    pub caller: Address,
+    pub percentage: u32,
+    pub new_member_count: u32,
+    pub timestamp: u64,
+}
+
+pub fn emit_member_added_to_group(
+    env: &Env,
+    group_id: BytesN<32>,
+    member: Address,
+    caller: Address,
+    percentage: u32,
+    new_member_count: u32,
+) {
+    MemberAddedToGroup {
+        group_id,
+        member,
+        caller,
+        percentage,
+        new_member_count,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct FundsDeposited {
+    #[topic]
+    pub group_id: BytesN<32>,
+    #[topic]
+    pub depositor: Address,
+    #[topic]
+    pub token: Address,
+    pub amount: i128,
+    pub new_treasury_balance: i128,
+}
+
+pub fn emit_funds_deposited(
+    env: &Env,
+    group_id: BytesN<32>,
+    depositor: Address,
+    token: Address,
+    amount: i128,
+    new_treasury_balance: i128,
+) {
+    FundsDeposited {
+        group_id,
+        depositor,
+        token,
+        amount,
+        new_treasury_balance,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeUpdated {
+    #[topic]
+    pub admin: Address,
+    pub old_fee: u32,
+    pub new_fee: u32,
+    pub old_recipient: Address,
+    pub new_recipient: Address,
+}
+
+pub fn emit_protocol_fee_updated(
+    env: &Env,
+    admin: Address,
+    old_fee: u32,
+    new_fee: u32,
+    old_recipient: Address,
+    new_recipient: Address,
+) {
+    ProtocolFeeUpdated {
+        admin,
+        old_fee,
+        new_fee,
+        old_recipient,
+        new_recipient,
+    }
+    .publish(env);
+}
+
+/// Emitted every time `get_protocol_fee` is invoked for analytics.
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeRead {
+    pub fee: u32,
+    pub recipient: Address,
+}
+
+pub fn emit_protocol_fee_read(env: &Env, fee: u32, recipient: Address) {
+    ProtocolFeeRead { fee, recipient }.publish(env);
 }

@@ -94,7 +94,7 @@ fn test_get_payment_group_unauthorized_update_fails() {
 
     let mut updated_members = soroban_sdk::Vec::new(&test_env.env);
     updated_members.push_back(GroupMember {
-        address: non_creator,
+        address: non_creator.clone(),
         percentage: 100,
     });
 
