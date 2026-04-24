@@ -406,36 +406,33 @@ pub fn emit_member_added_to_group(
     .publish(env);
 }
 
-/// Emitted every time `get_group_members` is invoked.
-/// Enables off-chain indexers to track read frequency and caller patterns
-/// without requiring any state mutation to be observable.
-///
-/// Topics are indexed so indexers can filter by group or caller independently.
-/// `member_count` and `query_count` are included as payload so a single event
-/// carries enough context for analytics without a follow-up read.
 #[contractevent]
 #[derive(Clone)]
-pub struct GroupMembersQueried {
-    /// The group whose member list was fetched.
+pub struct FundsDeposited {
     #[topic]
     pub group_id: BytesN<32>,
-    /// Number of members returned in this invocation.
-    pub member_count: u32,
-    /// Cumulative number of times this group's member list has been queried
-    /// (including this invocation).
-    pub query_count: u64,
+    #[topic]
+    pub depositor: Address,
+    #[topic]
+    pub token: Address,
+    pub amount: i128,
+    pub new_treasury_balance: i128,
 }
 
-pub fn emit_group_members_queried(
+pub fn emit_funds_deposited(
     env: &Env,
     group_id: BytesN<32>,
-    member_count: u32,
-    query_count: u64,
+    depositor: Address,
+    token: Address,
+    amount: i128,
+    new_treasury_balance: i128,
 ) {
-    GroupMembersQueried {
+    FundsDeposited {
         group_id,
-        member_count,
-        query_count,
+        depositor,
+        token,
+        amount,
+        new_treasury_balance,
     }
     .publish(env);
 }

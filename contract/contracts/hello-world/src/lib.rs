@@ -443,10 +443,25 @@ impl AutoShareContract {
     pub fn set_usage_fee(env: Env, fee: u32, admin: Address) {
         autoshare_logic::set_usage_fee(env, fee, admin).unwrap();
     }
-
     /// Returns the current usage fee.
     pub fn get_usage_fee(env: Env) -> u32 {
         autoshare_logic::get_usage_fee(env)
+    }
+
+    /// Sets the protocol fee percentage (0–100). Pass `group_id = None` for the global
+    /// default, or `Some(id)` to set a group-specific override. Admin only.
+    pub fn set_protocol_fee(
+        env: Env,
+        admin: Address,
+        fee_percent: u32,
+        group_id: Option<BytesN<32>>,
+    ) {
+        autoshare_logic::set_protocol_fee(env, admin, fee_percent, group_id).unwrap();
+    }
+
+    /// Returns the effective protocol fee percentage for a group (or the global default).
+    pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+        autoshare_logic::get_protocol_fee(env, group_id)
     }
 
     /// Sets the maximum number of members per group (admin only).
