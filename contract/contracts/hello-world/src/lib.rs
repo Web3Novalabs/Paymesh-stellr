@@ -243,25 +243,10 @@ impl AutoShareContract {
         autoshare_logic::get_group_members(env, id).unwrap()
     }
 
-    /// Returns a paginated list of all current members in a specific group.
-    ///
-    /// ### Arguments
-    /// * `id` - The unique 32-byte identifier of the AutoShare group.
-    /// * `offset` - The starting index for pagination.
-    /// * `limit` - The maximum number of members to return (capped at 20).
-    ///
-    /// ### Returns
-    /// * `base::types::MemberPage` - A struct containing the paginated list of members, total count, offset, and actual limit.
-    ///
-    /// ### Panics
-    /// * Panics with `Error::NotFound` if the group does not exist.
-    pub fn get_group_members_paginated(
-        env: Env,
-        id: BytesN<32>,
-        offset: u32,
-        limit: u32,
-    ) -> base::types::MemberPage {
-        autoshare_logic::get_group_members_paginated(env, id, offset, limit).unwrap()
+    /// Returns the cumulative number of times `get_group_members` has been called
+    /// for a specific group. Useful for off-chain analytics.
+    pub fn get_group_members_query_count(env: Env, id: BytesN<32>) -> u64 {
+        autoshare_logic::get_group_members_query_count(env, id)
     }
 
     pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32 {
@@ -468,10 +453,25 @@ impl AutoShareContract {
     pub fn set_usage_fee(env: Env, fee: u32, admin: Address) {
         autoshare_logic::set_usage_fee(env, fee, admin).unwrap();
     }
-
     /// Returns the current usage fee.
     pub fn get_usage_fee(env: Env) -> u32 {
         autoshare_logic::get_usage_fee(env)
+    }
+
+    /// Sets the protocol fee percentage (0–100). Pass `group_id = None` for the global
+    /// default, or `Some(id)` to set a group-specific override. Admin only.
+    pub fn set_protocol_fee(
+        env: Env,
+        admin: Address,
+        fee_percent: u32,
+        group_id: Option<BytesN<32>>,
+    ) {
+        autoshare_logic::set_protocol_fee(env, admin, fee_percent, group_id).unwrap();
+    }
+
+    /// Returns the effective protocol fee percentage for a group (or the global default).
+    pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+        autoshare_logic::get_protocol_fee(env, group_id)
     }
 
     /// Sets the maximum number of members per group (admin only).
@@ -731,6 +731,39 @@ impl AutoShareContract {
     pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) {
         autoshare_logic::cancel_fundraising(env, id, caller).unwrap();
     }
+
+    // ============================================================================
+    // Protocol Configuration
+    // ============================================================================
+
+    /// Returns the current protocol fee percentage (in basis points) and the fee recipient.
+    ///
+    /// This is a read-only operation that tracks invocations for off-chain analytics.
+    pub fn get_protocol_fee(env: Env) -> (u32, Address) {
+        let (fee, recipient) = autoshare_logic::get_protocol_fee(env.clone());
+
+        // Internal analytics: track read invocation (Issue #294)
+        crate::base::events::emit_protocol_fee_read(&env, fee, recipient.clone());
+
+        (fee, recipient)
+    }
+
+    /// Sets the protocol fee and recipient address (admin only).
+    /// Add comprehensive Rustdoc (Issue #290).
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment.
+    /// * `fee` - New fee in basis points (max 10000).
+    /// * `recipient` - New address to receive protocol fees.
+    /// * `admin` - Current contract admin address. Must authorize.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the caller is not the admin or if the fee exceeds 10000 bps.
+    pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) {
+        autoshare_logic::set_protocol_fee(env, fee, recipient, admin).unwrap();
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -901,3 +934,15 @@ mod update_payment_group_test;
 #[cfg(test)]
 #[path = "tests/update_payment_group_boundary_test.rs"]
 mod update_payment_group_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_diagnostics_test.rs"]
+mod get_group_members_diagnostics_test;
+
+#[cfg(test)]
+#[path = "tests/get_group_members_boundary_test.rs"]
+mod get_group_members_boundary_test;
+
+#[cfg(test)]
+#[path = "tests/protocol_fee_boundary_test.rs"]
+mod protocol_fee_boundary_test;
