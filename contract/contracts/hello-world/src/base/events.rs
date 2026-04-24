@@ -405,3 +405,34 @@ pub fn emit_member_added_to_group(
     }
     .publish(env);
 }
+
+#[contractevent]
+#[derive(Clone)]
+pub struct FundsDeposited {
+    #[topic]
+    pub group_id: BytesN<32>,
+    #[topic]
+    pub depositor: Address,
+    #[topic]
+    pub token: Address,
+    pub amount: i128,
+    pub new_treasury_balance: i128,
+}
+
+pub fn emit_funds_deposited(
+    env: &Env,
+    group_id: BytesN<32>,
+    depositor: Address,
+    token: Address,
+    amount: i128,
+    new_treasury_balance: i128,
+) {
+    FundsDeposited {
+        group_id,
+        depositor,
+        token,
+        amount,
+        new_treasury_balance,
+    }
+    .publish(env);
+}

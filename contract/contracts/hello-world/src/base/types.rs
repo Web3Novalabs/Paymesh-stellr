@@ -125,3 +125,13 @@ pub struct GroupSummary {
     pub has_active_fundraising: bool,
     pub total_distributions: u32,
 }
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DepositRecord {
+    pub group_id: BytesN<32>,
+    pub depositor: Address,
+    pub token: Address,
+    pub amount: i128,
+    pub timestamp: u64,
+}
