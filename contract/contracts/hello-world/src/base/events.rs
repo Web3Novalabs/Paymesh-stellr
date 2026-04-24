@@ -405,3 +405,75 @@ pub fn emit_member_added_to_group(
     }
     .publish(env);
 }
+
+#[contractevent]
+#[derive(Clone)]
+pub struct FundsDeposited {
+    #[topic]
+    pub group_id: BytesN<32>,
+    #[topic]
+    pub depositor: Address,
+    #[topic]
+    pub token: Address,
+    pub amount: i128,
+    pub new_treasury_balance: i128,
+}
+
+pub fn emit_funds_deposited(
+    env: &Env,
+    group_id: BytesN<32>,
+    depositor: Address,
+    token: Address,
+    amount: i128,
+    new_treasury_balance: i128,
+) {
+    FundsDeposited {
+        group_id,
+        depositor,
+        token,
+        amount,
+        new_treasury_balance,
+    }
+    .publish(env);
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeUpdated {
+    #[topic]
+    pub admin: Address,
+    pub old_fee: u32,
+    pub new_fee: u32,
+    pub old_recipient: Address,
+    pub new_recipient: Address,
+}
+
+pub fn emit_protocol_fee_updated(
+    env: &Env,
+    admin: Address,
+    old_fee: u32,
+    new_fee: u32,
+    old_recipient: Address,
+    new_recipient: Address,
+) {
+    ProtocolFeeUpdated {
+        admin,
+        old_fee,
+        new_fee,
+        old_recipient,
+        new_recipient,
+    }
+    .publish(env);
+}
+
+/// Emitted every time `get_protocol_fee` is invoked for analytics.
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeRead {
+    pub fee: u32,
+    pub recipient: Address,
+}
+
+pub fn emit_protocol_fee_read(env: &Env, fee: u32, recipient: Address) {
+    ProtocolFeeRead { fee, recipient }.publish(env);
+}

@@ -2,7 +2,7 @@ use soroban_sdk::{Address, BytesN, Env, String, Vec};
 
 use crate::base::types::{
     AutoShareDetails, DistributionHistory, DistributionRecord, FundraisingConfig,
-    FundraisingContribution, GroupMember, PaymentHistory,
+    FundraisingContribution, GroupMember, MemberPage, PaymentHistory,
 };
 
 /// AutoShareTrait defines the interface for the AutoShare contract.
@@ -117,6 +117,14 @@ pub trait AutoShareTrait {
 
     /// Returns all members of a group.
     fn get_group_members(env: Env, id: BytesN<32>) -> Vec<GroupMember>;
+
+    /// Returns a paginated list of all current members in a specific group.
+    fn get_group_members_paginated(
+        env: Env,
+        id: BytesN<32>,
+        offset: u32,
+        limit: u32,
+    ) -> MemberPage;
 
     /// Returns a specific member's share (percentage) in a group.
     fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32;
@@ -350,4 +358,14 @@ pub trait AutoShareTrait {
 
     /// Cancels an active fundraising campaign. Only the group creator can cancel.
     fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address);
+
+    // ============================================================================
+    // Protocol Configuration
+    // ============================================================================
+
+    /// Returns the current protocol fee percentage (in basis points) and the fee recipient.
+    fn get_protocol_fee(env: Env) -> (u32, Address);
+
+    /// Sets the protocol fee and recipient address (admin only).
+    fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address);
 }

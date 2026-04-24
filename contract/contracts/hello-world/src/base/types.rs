@@ -80,6 +80,15 @@ pub struct GroupPage {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MemberPage {
+    pub members: Vec<GroupMember>,
+    pub total: u32,
+    pub offset: u32,
+    pub limit: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FundraisingConfig {
     pub target_amount: i128,
     pub total_raised: i128,
@@ -124,4 +133,14 @@ pub struct GroupSummary {
     pub remaining_usages: u32,
     pub has_active_fundraising: bool,
     pub total_distributions: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DepositRecord {
+    pub group_id: BytesN<32>,
+    pub depositor: Address,
+    pub token: Address,
+    pub amount: i128,
+    pub timestamp: u64,
 }

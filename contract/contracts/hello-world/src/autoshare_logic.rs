@@ -1,14 +1,15 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
-    emit_fundraising_target_updated, emit_max_members_updated, emit_member_removed,
-    emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
-    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
-    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_fundraising_target_updated, emit_funds_deposited, emit_max_members_updated,
+    emit_member_removed, emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred,
+    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
+    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred,
+    Withdrawal,
 };
 
 use crate::base::types::{
-    ActiveFundraising, AutoShareDetails, DistributionHistory, DistributionRecord,
+    ActiveFundraising, AutoShareDetails, DepositRecord, DistributionHistory, DistributionRecord,
     FundraisingConfig, FundraisingContribution, GroupMember, GroupPage, GroupStats, GroupSummary,
     MemberAmount, MemberDistributionRecord, PaymentHistory,
 };
@@ -35,8 +36,10 @@ pub enum DataKey {
     GroupDistributions(BytesN<32>),
     MaxMembers,
     MinContribution,
+    // Diagnostic: per-group invocation counter for get_group_members
+    GroupMembersQueryCount(BytesN<32>),
     ProtocolFee,
-    GroupProtocolFee(BytesN<32>),
+    ProtocolFeeRecipient,
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -521,13 +524,53 @@ pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> Result<boo
     Ok(false)
 }
 
+/// Returns all members of a group.
+///
+/// ### Arguments
+/// * `id` - The unique 32-byte identifier of the AutoShare group.
+///
+/// ### Returns
+/// * `Result<Vec<GroupMember>, Error>` - A vector containing all group members and their percentages, 
+///   or an error if the group is not found.
+///
+/// ### Panics
+/// * This function does not panic but returns `Error::NotFound` if the group ID is invalid.
 pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, Error> {
-    let details = get_autoshare(env, id)?;
-    Ok(details.members)
+    let details = get_autoshare(env.clone(), id.clone())?;
+    let members = details.members;
+
+    // ── Diagnostic tracking ──────────────────────────────────────────────────
+    // Increment the per-group invocation counter and emit a diagnostic event so
+    // off-chain indexers can track read frequency without any additional RPC calls.
+    let counter_key = DataKey::GroupMembersQueryCount(id.clone());
+    let prev_count: u64 = env
+        .storage()
+        .persistent()
+        .get(&counter_key)
+        .unwrap_or(0u64);
+    let new_count = prev_count + 1;
+    env.storage().persistent().set(&counter_key, &new_count);
+    bump_persistent(&env, &counter_key);
+
+    emit_group_members_queried(&env, id, members.len(), new_count);
+    // ────────────────────────────────────────────────────────────────────────
+
+    Ok(members)
 }
 
-pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {
-    let details = get_autoshare(env, id)?;
+/// Returns the cumulative number of times `get_group_members` has been called
+/// for the given group. Returns 0 if the function has never been invoked.
+/// Intended for off-chain analytics dashboards.
+pub fn get_group_members_query_count(env: Env, id: BytesN<32>) -> u64 {
+    let key = DataKey::GroupMembersQueryCount(id);
+    let count: u64 = env.storage().persistent().get(&key).unwrap_or(0u64);
+    if count > 0 {
+        bump_persistent(&env, &key);
+    }
+    count
+}
+
+pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {    let details = get_autoshare(env, id)?;
     for m in details.members.iter() {
         if m.address == member {
             return Ok(m.percentage);
@@ -688,7 +731,7 @@ pub fn add_group_member(
 
     AutoshareUpdated {
         id: id.clone(),
-        updater: caller,
+        updater: caller.clone(),
         name_updated: false,
         metadata_updated: false,
         new_creator: None,
@@ -1139,6 +1182,55 @@ pub fn get_usage_fee(env: Env) -> u32 {
         bump_persistent(&env, &fee_key);
     }
     result.unwrap_or(10u32)
+}
+
+/// Sets the global protocol fee percentage (0–100). Pass `group_id = None` for the global
+/// default, or `Some(id)` to override the fee for a specific group. Admin only.
+pub fn set_protocol_fee(
+    env: Env,
+    admin: Address,
+    fee_percent: u32,
+    group_id: Option<BytesN<32>>,
+) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    if fee_percent > 100 {
+        return Err(Error::InvalidInput);
+    }
+
+    match group_id {
+        Some(id) => {
+            let key = DataKey::GroupProtocolFee(id);
+            env.storage().persistent().set(&key, &fee_percent);
+            bump_persistent(&env, &key);
+        }
+        None => {
+            let key = DataKey::ProtocolFee;
+            env.storage().persistent().set(&key, &fee_percent);
+            bump_persistent(&env, &key);
+        }
+    }
+
+    Ok(())
+}
+
+/// Returns the effective protocol fee percentage for a group.
+/// Falls back to the global protocol fee if no group-specific override is set.
+pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+    if let Some(id) = group_id {
+        let group_key = DataKey::GroupProtocolFee(id);
+        if let Some(fee) = env.storage().persistent().get::<DataKey, u32>(&group_key) {
+            bump_persistent(&env, &group_key);
+            return fee;
+        }
+    }
+    let global_key = DataKey::ProtocolFee;
+    let result: Option<u32> = env.storage().persistent().get(&global_key);
+    if result.is_some() {
+        bump_persistent(&env, &global_key);
+    }
+    result.unwrap_or(0u32)
 }
 
 pub fn set_max_members(env: Env, admin: Address, max: u32) -> Result<(), Error> {
@@ -3327,4 +3419,68 @@ pub fn cancel_fundraising(env: Env, id: BytesN<32>, caller: Address) -> Result<(
     emit_fundraising_cancelled(&env, id.clone(), total_raised_at_cancellation);
 
     Ok(())
+}
+
+pub fn get_protocol_fee(env: Env) -> (u32, Address) {
+    let fee = get_protocol_fee_val(&env);
+    let recipient = get_protocol_recipient_val(&env);
+    (fee, recipient)
+}
+
+pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    if fee > 10000 {
+        return Err(Error::InvalidInput);
+    }
+
+    let old_fee = get_protocol_fee_val(&env);
+    let old_recipient = get_protocol_recipient_val(&env);
+
+    let fee_key = DataKey::ProtocolFee;
+    let recipient_key = DataKey::ProtocolFeeRecipient;
+
+    env.storage().persistent().set(&fee_key, &fee);
+    env.storage().persistent().set(&recipient_key, &recipient);
+
+    bump_persistent(&env, &fee_key);
+    bump_persistent(&env, &recipient_key);
+
+    crate::base::events::emit_protocol_fee_updated(
+        &env,
+        admin,
+        old_fee,
+        fee,
+        old_recipient,
+        recipient,
+    );
+
+    Ok(())
+}
+
+fn get_protocol_fee_val(env: &Env) -> u32 {
+    let key = DataKey::ProtocolFee;
+    let fee = env.storage().persistent().get(&key).unwrap_or(0u32);
+    if env.storage().persistent().has(&key) {
+        bump_persistent(env, &key);
+    }
+    fee
+}
+
+fn get_protocol_recipient_val(env: &Env) -> Address {
+    let key = DataKey::ProtocolFeeRecipient;
+    // Default to admin if not set
+    let admin_key = DataKey::Admin;
+    let admin = env
+        .storage()
+        .persistent()
+        .get(&admin_key)
+        .expect("admin must be set");
+
+    let recipient = env.storage().persistent().get(&key).unwrap_or(admin);
+    if env.storage().persistent().has(&key) {
+        bump_persistent(env, &key);
+    }
+    recipient
 }
