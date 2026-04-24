@@ -1,10 +1,11 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
-    emit_fundraising_target_updated, emit_max_members_updated, emit_member_removed,
-    emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
-    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
-    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_fundraising_target_updated, emit_group_members_queried, emit_max_members_updated,
+    emit_member_removed, emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred,
+    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
+    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred,
+    Withdrawal,
 };
 
 use crate::base::types::{
@@ -35,6 +36,8 @@ pub enum DataKey {
     GroupDistributions(BytesN<32>),
     MaxMembers,
     MinContribution,
+    // Diagnostic: per-group invocation counter for get_group_members
+    GroupMembersQueryCount(BytesN<32>),
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -520,12 +523,41 @@ pub fn is_group_member(env: Env, id: BytesN<32>, address: Address) -> Result<boo
 }
 
 pub fn get_group_members(env: Env, id: BytesN<32>) -> Result<Vec<GroupMember>, Error> {
-    let details = get_autoshare(env, id)?;
-    Ok(details.members)
+    let details = get_autoshare(env.clone(), id.clone())?;
+    let members = details.members;
+
+    // ── Diagnostic tracking ──────────────────────────────────────────────────
+    // Increment the per-group invocation counter and emit a diagnostic event so
+    // off-chain indexers can track read frequency without any additional RPC calls.
+    let counter_key = DataKey::GroupMembersQueryCount(id.clone());
+    let prev_count: u64 = env
+        .storage()
+        .persistent()
+        .get(&counter_key)
+        .unwrap_or(0u64);
+    let new_count = prev_count + 1;
+    env.storage().persistent().set(&counter_key, &new_count);
+    bump_persistent(&env, &counter_key);
+
+    emit_group_members_queried(&env, id, members.len(), new_count);
+    // ────────────────────────────────────────────────────────────────────────
+
+    Ok(members)
 }
 
-pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {
-    let details = get_autoshare(env, id)?;
+/// Returns the cumulative number of times `get_group_members` has been called
+/// for the given group. Returns 0 if the function has never been invoked.
+/// Intended for off-chain analytics dashboards.
+pub fn get_group_members_query_count(env: Env, id: BytesN<32>) -> u64 {
+    let key = DataKey::GroupMembersQueryCount(id);
+    let count: u64 = env.storage().persistent().get(&key).unwrap_or(0u64);
+    if count > 0 {
+        bump_persistent(&env, &key);
+    }
+    count
+}
+
+pub fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> Result<u32, Error> {    let details = get_autoshare(env, id)?;
     for m in details.members.iter() {
         if m.address == member {
             return Ok(m.percentage);
@@ -686,7 +718,7 @@ pub fn add_group_member(
 
     AutoshareUpdated {
         id: id.clone(),
-        updater: caller,
+        updater: caller.clone(),
         name_updated: false,
         metadata_updated: false,
         new_creator: None,
