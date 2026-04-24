@@ -1,8 +1,9 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_target_updated,
-    emit_max_members_updated, AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused,
-    ContractUnpaused, FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
+    emit_group_protocol_fee_updated, emit_max_members_updated, emit_protocol_fee_updated,
+    AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
+    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted,
     GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
 };
 
@@ -38,6 +39,8 @@ pub enum DataKey {
     GroupDistributions(BytesN<32>),
     MaxMembers,
     MinContribution,
+    ProtocolFee,
+    GroupProtocolFee(BytesN<32>),
 }
 
 const DAY_IN_LEDGERS: u32 = 17280;
@@ -889,6 +892,73 @@ pub fn get_min_contribution(env: Env) -> i128 {
         bump_persistent(&env, &key);
     }
     result.unwrap_or(0i128)
+}
+
+pub fn set_protocol_fee(env: Env, admin: Address, percentage: u32) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    // Percentage must be between 0 and 100
+    if percentage > 100 {
+        return Err(Error::InvalidAmount);
+    }
+
+    let old_fee = get_protocol_fee(env.clone());
+    let key = DataKey::ProtocolFee;
+    env.storage().persistent().set(&key, &percentage);
+    bump_persistent(&env, &key);
+
+    emit_protocol_fee_updated(&env, old_fee, percentage);
+    Ok(())
+}
+
+pub fn get_protocol_fee(env: Env) -> u32 {
+    let key = DataKey::ProtocolFee;
+    let fee: u32 = env.storage().persistent().get(&key).unwrap_or(0);
+    if env.storage().persistent().has(&key) {
+        bump_persistent(&env, &key);
+    }
+    fee
+}
+
+pub fn set_group_protocol_fee(
+    env: Env,
+    admin: Address,
+    id: BytesN<32>,
+    percentage: u32,
+) -> Result<(), Error> {
+    admin.require_auth();
+    require_admin(&env, &admin)?;
+
+    // Check if group exists
+    let group_key = DataKey::AutoShare(id.clone());
+    if !env.storage().persistent().has(&group_key) {
+        return Err(Error::NotFound);
+    }
+
+    // Percentage must be between 0 and 100
+    if percentage > 100 {
+        return Err(Error::InvalidAmount);
+    }
+
+    let old_fee = get_group_protocol_fee(env.clone(), id.clone());
+    let key = DataKey::GroupProtocolFee(id.clone());
+    env.storage().persistent().set(&key, &percentage);
+    bump_persistent(&env, &key);
+
+    emit_group_protocol_fee_updated(&env, id, old_fee, percentage);
+    Ok(())
+}
+
+pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32 {
+    let key = DataKey::GroupProtocolFee(id);
+    let fee: Option<u32> = env.storage().persistent().get(&key);
+    if fee.is_some() {
+        bump_persistent(&env, &key);
+        fee.unwrap()
+    } else {
+        get_protocol_fee(env)
+    }
 }
 
 // ============================================================================

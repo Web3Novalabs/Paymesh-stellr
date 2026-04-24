@@ -308,6 +308,26 @@ impl AutoShareContract {
         autoshare_logic::get_max_members(&env)
     }
 
+    /// Sets the protocol fee percentage (admin only).
+    pub fn set_protocol_fee(env: Env, admin: Address, percentage: u32) {
+        autoshare_logic::set_protocol_fee(env, admin, percentage).unwrap();
+    }
+
+    /// Returns the current global protocol fee percentage.
+    pub fn get_protocol_fee(env: Env) -> u32 {
+        autoshare_logic::get_protocol_fee(env)
+    }
+
+    /// Sets the group-specific protocol fee percentage (admin only).
+    pub fn set_group_protocol_fee(env: Env, admin: Address, id: BytesN<32>, percentage: u32) {
+        autoshare_logic::set_group_protocol_fee(env, admin, id, percentage).unwrap();
+    }
+
+    /// Returns the protocol fee percentage for a specific group.
+    pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32 {
+        autoshare_logic::get_group_protocol_fee(env, id)
+    }
+
     // ============================================================================
     // Subscription Management
     // ============================================================================
@@ -625,6 +645,10 @@ mod fundraising_distribution_interaction_test;
 #[cfg(test)]
 #[path = "tests/transfer_group_ownership_test.rs"]
 mod transfer_group_ownership_test;
+
+#[cfg(test)]
+#[path = "tests/protocol_fee_test.rs"]
+mod protocol_fee_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_reset_test.rs"]
