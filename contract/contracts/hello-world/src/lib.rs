@@ -392,12 +392,12 @@ impl AutoShareContract {
 
     /// Updates the settings of an existing payment group (name, metadata, and creator).
     ///
-    /// This is a consolidated update method that allows the group creator to 
+    /// This is a consolidated update method that allows the group creator to
     /// modify multiple settings or transfer ownership in a single transaction.
     ///
     /// # Panics
     ///
-    /// Panics if the caller is not the creator, if the contract is paused, 
+    /// Panics if the caller is not the creator, if the contract is paused,
     /// or if the group is inactive.
     pub fn update_payment_group(
         env: Env,
@@ -499,22 +499,6 @@ impl AutoShareContract {
         autoshare_logic::get_usage_fee(env)
     }
 
-    /// Sets the protocol fee percentage (0–100). Pass `group_id = None` for the global
-    /// default, or `Some(id)` to set a group-specific override. Admin only.
-    pub fn set_protocol_fee(
-        env: Env,
-        admin: Address,
-        fee_percent: u32,
-        group_id: Option<BytesN<32>>,
-    ) {
-        autoshare_logic::set_protocol_fee(env, admin, fee_percent, group_id).unwrap();
-    }
-
-    /// Returns the effective protocol fee percentage for a group (or the global default).
-    pub fn get_protocol_fee(env: Env, group_id: Option<BytesN<32>>) -> u32 {
-        autoshare_logic::get_protocol_fee(env, group_id)
-    }
-
     /// Sets the maximum number of members per group (admin only).
     pub fn set_max_members(env: Env, admin: Address, max: u32) {
         autoshare_logic::set_max_members(env, admin, max).unwrap();
@@ -525,22 +509,10 @@ impl AutoShareContract {
         autoshare_logic::get_max_members(&env)
     }
 
-    /// Sets the protocol fee percentage (admin only).
-    pub fn set_global_protocol_fee(env: Env, admin: Address, percentage: u32) {
-        autoshare_logic::set_global_protocol_fee(env, admin, percentage).unwrap();
-    }
-
-    /// Returns the current global protocol fee percentage.
-    pub fn get_global_protocol_fee(env: Env) -> u32 {
-        autoshare_logic::get_global_protocol_fee(env)
-    }
-
-    /// Sets the group-specific protocol fee percentage (admin only).
     pub fn set_group_protocol_fee(env: Env, admin: Address, id: BytesN<32>, percentage: u32) {
         autoshare_logic::set_group_protocol_fee(env, admin, id, percentage).unwrap();
     }
 
-    /// Returns the protocol fee percentage for a specific group.
     pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32 {
         autoshare_logic::get_group_protocol_fee(env, id)
     }
@@ -942,7 +914,13 @@ impl AutoShareContract {
     /// # Panics
     ///
     /// Panics if validation fails or token transfer fails.
-    pub fn deposit_funds(env: Env, id: BytesN<32>, token: Address, amount: i128, depositor: Address) {
+    pub fn deposit_funds(
+        env: Env,
+        id: BytesN<32>,
+        token: Address,
+        amount: i128,
+        depositor: Address,
+    ) {
         autoshare_logic::deposit_funds(env, id, token, amount, depositor).unwrap();
     }
 

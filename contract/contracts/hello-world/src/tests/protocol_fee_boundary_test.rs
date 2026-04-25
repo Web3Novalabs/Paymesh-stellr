@@ -1,8 +1,6 @@
-use crate::test_utils::{
-    deploy_autoshare_contract,
-};
+use crate::test_utils::deploy_autoshare_contract;
 use crate::AutoShareContractClient;
-use soroban_sdk::{testutils::Address as _, Address, Env, testutils::Events, FromVal};
+use soroban_sdk::{testutils::Address as _, testutils::Events, Address, Env, FromVal};
 
 fn setup(env: &Env) -> (Address, AutoShareContractClient<'_>) {
     env.mock_all_auths();
@@ -17,7 +15,7 @@ fn setup(env: &Env) -> (Address, AutoShareContractClient<'_>) {
 fn test_protocol_fee_initial_state() {
     let env = Env::default();
     let (admin, client) = setup(&env);
-    
+
     let (fee, recipient) = client.get_protocol_fee();
     assert_eq!(fee, 0);
     assert_eq!(recipient, admin); // Default to admin
@@ -31,7 +29,7 @@ fn test_set_protocol_fee_admin_only() {
     let recipient = Address::generate(&env);
 
     env.mock_all_auths();
-    
+
     // Set as non-admin should fail
     let result = client.try_set_protocol_fee(&100, &recipient, &non_admin);
     assert!(result.is_err());
@@ -70,7 +68,7 @@ fn test_protocol_fee_read_tracking_event() {
     env.mock_all_auths();
 
     client.set_protocol_fee(&150, &admin, &admin);
-    
+
     // Clear previous events
     let _ = env.events().all();
 

@@ -1,11 +1,9 @@
-#![cfg(test)]
-
+use crate::base::types::GroupMember;
 use crate::test_utils::{
     create_test_members, deploy_autoshare_contract, deploy_mock_token, mint_tokens,
 };
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
-use crate::base::types::GroupMember;
 
 fn setup(env: &Env) -> (Address, Address, AutoShareContractClient<'_>) {
     env.mock_all_auths();
@@ -32,7 +30,13 @@ fn make_group(
 ) -> BytesN<32> {
     let id = BytesN::from_array(env, &[seed; 32]);
     mint_tokens(env, token, creator, 10_000);
-    client.create(&id, &String::from_str(env, "Test Group"), creator, &1, token);
+    client.create(
+        &id,
+        &String::from_str(env, "Test Group"),
+        creator,
+        &1,
+        token,
+    );
     id
 }
 
@@ -55,7 +59,7 @@ fn test_get_group_members_max_capacity() {
     }
 
     client.update_members(&id, &creator, &members);
-    
+
     let result = client.get_group_members(&id);
     assert_eq!(result.len(), 50);
 }
@@ -66,7 +70,7 @@ fn test_get_group_members_nonexistent_group() {
     let env = Env::default();
     env.mock_all_auths();
     let (_, _, client) = setup(&env);
-    
+
     let ghost_id = BytesN::from_array(&env, &[0xFFu8; 32]);
     client.get_group_members(&ghost_id);
 }
@@ -81,9 +85,9 @@ fn test_get_group_members_after_deactivation() {
 
     let members = create_test_members(&env, 2);
     client.update_members(&id, &creator, &members);
-    
+
     client.deactivate_group(&id, &creator);
-    assert_eq!(client.is_group_active(&id), false);
+    assert!(!client.is_group_active(&id));
 
     // Members should still be fetchable
     let result = client.get_group_members(&id);
@@ -96,11 +100,17 @@ fn test_get_group_members_extreme_input() {
     env.mock_all_auths();
     let (_, token, client) = setup(&env);
     let creator = Address::generate(&env);
-    
+
     // Large ID (handled by type, but good to check)
     let id = BytesN::from_array(&env, &[0xEEu8; 32]);
     mint_tokens(&env, &token, &creator, 10_000);
-    client.create(&id, &String::from_str(&env, "Extreme Group"), &creator, &1, &token);
+    client.create(
+        &id,
+        &String::from_str(&env, "Extreme Group"),
+        &creator,
+        &1,
+        &token,
+    );
 
     // One member with 100%
     let mut members: Vec<GroupMember> = Vec::new(&env);

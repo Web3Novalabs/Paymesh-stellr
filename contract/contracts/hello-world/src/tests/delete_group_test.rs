@@ -746,7 +746,7 @@ fn test_delete_group_event_emission() {
     let mut found = false;
     for event in events.iter() {
         let topics = &event.1;
-        if topics.len() == 0 {
+        if topics.is_empty() {
             continue;
         }
 

@@ -478,6 +478,29 @@ pub fn emit_protocol_fee_read(env: &Env, fee: u32, recipient: Address) {
     ProtocolFeeRead { fee, recipient }.publish(env);
 }
 
+#[contractevent]
+#[derive(Clone)]
+pub struct GroupProtocolFeeUpdated {
+    #[topic]
+    pub group_id: BytesN<32>,
+    pub old_fee: u32,
+    pub new_fee: u32,
+}
+
+pub fn emit_group_protocol_fee_updated(
+    env: &Env,
+    group_id: BytesN<32>,
+    old_fee: u32,
+    new_fee: u32,
+) {
+    GroupProtocolFeeUpdated {
+        group_id,
+        old_fee,
+        new_fee,
+    }
+    .publish(env);
+}
+
 /// Emitted when get_group_members is queried for analytics tracking.
 #[contractevent]
 #[derive(Clone)]
@@ -488,7 +511,12 @@ pub struct GroupMembersQueried {
     pub query_count: u64,
 }
 
-pub fn emit_group_members_queried(env: &Env, group_id: BytesN<32>, member_count: u32, query_count: u64) {
+pub fn emit_group_members_queried(
+    env: &Env,
+    group_id: BytesN<32>,
+    member_count: u32,
+    query_count: u64,
+) {
     GroupMembersQueried {
         group_id,
         member_count,

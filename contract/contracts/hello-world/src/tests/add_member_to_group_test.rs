@@ -1,4 +1,3 @@
-#![cfg(test)]
 
 use crate::base::types::GroupMember;
 use crate::test_utils::{create_test_group, mint_tokens, setup_test_env};

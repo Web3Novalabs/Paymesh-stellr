@@ -1,4 +1,3 @@
-#![cfg(test)]
 use crate::mock_token::MockTokenClient;
 use crate::test_utils::{create_test_group, setup_test_env};
 use crate::AutoShareContractClient;

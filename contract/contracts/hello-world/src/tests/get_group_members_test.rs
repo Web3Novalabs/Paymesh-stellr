@@ -13,7 +13,7 @@ fn test_get_group_members_paginated() {
 
     // Create a group with 25 members
     let mut members = Vec::new(&test_env.env);
-    for i in 0..25 {
+    for _i in 0..25 {
         members.push_back(GroupMember {
             address: Address::generate(&test_env.env),
             percentage: 4, // 25 * 4 = 100

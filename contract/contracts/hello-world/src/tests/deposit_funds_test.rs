@@ -1,4 +1,3 @@
-#![cfg(test)]
 #![allow(unused_imports)]
 
 use crate::test_utils::{deploy_autoshare_contract, deploy_mock_token, mint_tokens};
@@ -31,7 +30,13 @@ fn make_group(
 ) -> BytesN<32> {
     let id = BytesN::from_array(env, &[seed; 32]);
     mint_tokens(env, token, creator, 10_000);
-    client.create(&id, &String::from_str(env, "Test Group"), creator, &1, token);
+    client.create(
+        &id,
+        &String::from_str(env, "Test Group"),
+        creator,
+        &1,
+        token,
+    );
     id
 }
 

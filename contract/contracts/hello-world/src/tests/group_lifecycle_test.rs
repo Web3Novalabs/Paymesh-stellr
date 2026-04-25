@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use crate::base::types::GroupMember;
 use crate::test_utils::setup_test_env;
 use crate::AutoShareContractClient;

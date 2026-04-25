@@ -119,12 +119,8 @@ pub trait AutoShareTrait {
     fn get_group_members(env: Env, id: BytesN<32>) -> Vec<GroupMember>;
 
     /// Returns a paginated list of all current members in a specific group.
-    fn get_group_members_paginated(
-        env: Env,
-        id: BytesN<32>,
-        offset: u32,
-        limit: u32,
-    ) -> MemberPage;
+    fn get_group_members_paginated(env: Env, id: BytesN<32>, offset: u32, limit: u32)
+        -> MemberPage;
 
     /// Returns a specific member's share (percentage) in a group.
     fn get_member_percentage(env: Env, id: BytesN<32>, member: Address) -> u32;
@@ -242,18 +238,6 @@ pub trait AutoShareTrait {
 
     /// Returns the current usage fee.
     fn get_usage_fee(env: Env) -> u32;
-
-    /// Sets the protocol fee percentage (admin only).
-    fn set_protocol_fee(env: Env, admin: Address, percentage: u32);
-
-    /// Returns the current global protocol fee percentage.
-    fn get_protocol_fee(env: Env) -> u32;
-
-    /// Sets the group-specific protocol fee percentage (admin only).
-    fn set_group_protocol_fee(env: Env, admin: Address, id: BytesN<32>, percentage: u32);
-
-    /// Returns the protocol fee percentage for a specific group.
-    fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32;
 
     // ============================================================================
     // Subscription Management
@@ -379,4 +363,10 @@ pub trait AutoShareTrait {
 
     /// Sets the protocol fee and recipient address (admin only).
     fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address);
+
+    /// Sets the group-specific protocol fee percentage (admin only).
+    fn set_group_protocol_fee(env: Env, admin: Address, id: BytesN<32>, percentage: u32);
+
+    /// Returns the protocol fee percentage for a specific group (falls back to global).
+    fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32;
 }

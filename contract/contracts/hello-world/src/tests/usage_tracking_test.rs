@@ -386,9 +386,9 @@ fn test_large_usage_count_no_overflow() {
 
     let creator = test_env.users.get(0).unwrap().clone();
 
-    // 500_000_000 > i32::MAX (2_147_483_647 / 4 = ~536M, so this is just below i32::MAX
-    // but way above u16::MAX); also tests that (usage_count as i128) * fee has no overflow.
-    let large_usages: u32 = 500_000_000;
+    // u32::MAX = 4_294_967_295; tests that (usage_count as i128) * fee has no overflow
+    // and that the contract stores/retrieves the full u32 range without truncation.
+    let large_usages: u32 = u32::MAX;
 
     // create_test_group mints (usages * 10 + 10_000) tokens for the creator
     let id = create_test_group(
