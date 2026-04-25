@@ -1082,9 +1082,9 @@ mod fundraising_distribution_interaction_test;
 #[path = "tests/transfer_group_ownership_test.rs"]
 mod transfer_group_ownership_test;
 
-// #[cfg(test)]
-// #[path = "tests/protocol_fee_test.rs"]
-// mod protocol_fee_test;
+#[cfg(test)]
+#[path = "tests/protocol_fee_test.rs"]
+mod protocol_fee_test;
 
 #[cfg(test)]
 #[path = "tests/fundraising_reset_test.rs"]
@@ -1146,9 +1146,9 @@ mod get_group_members_diagnostics_test;
 #[path = "tests/get_group_members_boundary_test.rs"]
 mod get_group_members_boundary_test;
 
-// #[cfg(test)]
-// #[path = "tests/protocol_fee_boundary_test.rs"]
-// mod protocol_fee_boundary_test;
+#[cfg(test)]
+#[path = "tests/protocol_fee_boundary_test.rs"]
+mod protocol_fee_boundary_test;
 
 #[cfg(test)]
 #[path = "tests/deposit_funds_test.rs"]

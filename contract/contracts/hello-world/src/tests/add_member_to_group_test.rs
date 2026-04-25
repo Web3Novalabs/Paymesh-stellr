@@ -1,4 +1,3 @@
-
 use crate::base::types::GroupMember;
 use crate::test_utils::{create_test_group, mint_tokens, setup_test_env};
 use crate::AutoShareContractClient;
@@ -17,7 +16,14 @@ fn test_add_member_to_group_success() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        5,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &new_member, &100);
 
@@ -39,7 +45,14 @@ fn test_add_member_to_group_sequential_adds_succeed() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        5,
+        &token,
+    );
 
     let m1 = Address::generate(env);
     let m2 = Address::generate(env);
@@ -69,7 +82,14 @@ fn test_add_member_to_group_updates_member_groups_index() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &new_member, &100);
 
@@ -93,7 +113,14 @@ fn test_add_member_to_group_unauthorized_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
 
     client.add_member_to_group(&id, &attacker, &new_member, &100);
 }
@@ -129,7 +156,14 @@ fn test_add_member_to_group_inactive_group_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        2,
+        &token,
+    );
     client.deactivate_payment_group(&id, &creator);
 
     client.add_member_to_group(&id, &creator, &new_member, &100);
@@ -149,7 +183,14 @@ fn test_add_member_to_group_zero_percentage_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        2,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &new_member, &0);
 }
@@ -168,7 +209,14 @@ fn test_add_member_to_group_percentage_over_100_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        2,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &new_member, &101);
 }
@@ -187,7 +235,14 @@ fn test_add_member_to_group_exceeds_total_percentage_fails() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &Address::generate(env), &60);
     // 60 + 50 = 110 > 100 → InvalidTotalPercentage
@@ -208,7 +263,14 @@ fn test_add_member_to_group_duplicate_member_fails() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &member, &50);
     // Same address again → AlreadyExists
@@ -233,7 +295,14 @@ fn test_add_member_to_group_at_capacity_fails() {
     // Set capacity to 2 so the test runs fast
     client.set_max_members(&admin, &2);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &Address::generate(env), &50);
     client.add_member_to_group(&id, &creator, &Address::generate(env), &50);
@@ -255,7 +324,14 @@ fn test_add_member_to_group_blocked_when_paused() {
     let token = test_env.mock_tokens.get(0).unwrap().clone();
     let new_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        2,
+        &token,
+    );
 
     client.pause(&test_env.admin);
     client.add_member_to_group(&id, &creator, &new_member, &100);
@@ -273,7 +349,14 @@ fn test_add_member_to_group_creator_as_member_succeeds() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        2,
+        &token,
+    );
 
     // Creator adding themselves is allowed; a CreatorIsMember event is emitted
     client.add_member_to_group(&id, &creator, &creator, &100);
@@ -296,7 +379,14 @@ fn test_add_member_to_group_is_group_member_reflects_addition() {
     let new_member = Address::generate(env);
     let non_member = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 2, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        2,
+        &token,
+    );
 
     assert!(!client.is_group_member(&id, &new_member));
     client.add_member_to_group(&id, &creator, &new_member, &100);
@@ -316,7 +406,14 @@ fn test_add_member_to_group_increments_member_count() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        5,
+        &token,
+    );
 
     assert_eq!(client.get_group_member_count(&id), 0);
 
@@ -350,7 +447,14 @@ fn test_add_member_to_group_after_update_members_succeeds() {
         percentage: 70,
     });
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &initial_members, 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &initial_members,
+        5,
+        &token,
+    );
 
     let new_member = Address::generate(env);
     // 70 + 30 = 100 — valid
@@ -382,7 +486,14 @@ fn test_add_member_to_group_exact_100_total_succeeds() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &Address::generate(env), &33);
     client.add_member_to_group(&id, &creator, &Address::generate(env), &33);
@@ -408,7 +519,14 @@ fn test_add_member_to_group_then_distribute_succeeds() {
     let m1 = Address::generate(env);
     let m2 = Address::generate(env);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        5,
+        &token,
+    );
 
     client.add_member_to_group(&id, &creator, &m1, &60);
     client.add_member_to_group(&id, &creator, &m2, &40);
