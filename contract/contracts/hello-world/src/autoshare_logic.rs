@@ -1433,7 +1433,7 @@ pub fn get_min_contribution(env: Env) -> i128 {
     result.unwrap_or(0i128)
 }
 
-pub fn set_protocol_fee(env: Env, admin: Address, percentage: u32) -> Result<(), Error> {
+pub fn set_global_protocol_fee(env: Env, admin: Address, percentage: u32) -> Result<(), Error> {
     admin.require_auth();
     require_admin(&env, &admin)?;
 
@@ -3580,7 +3580,7 @@ pub fn get_protocol_fee(env: Env) -> (u32, Address) {
     (fee, recipient)
 }
 
-pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) -> Result<(), Error> {
+pub fn set_protocol_fee_with_recipient(env: Env, fee: u32, recipient: Address, admin: Address) -> Result<(), Error> {
     admin.require_auth();
     require_admin(&env, &admin)?;
 
