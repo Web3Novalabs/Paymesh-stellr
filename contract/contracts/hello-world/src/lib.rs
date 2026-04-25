@@ -513,6 +513,21 @@ impl AutoShareContract {
         autoshare_logic::set_group_protocol_fee(env, admin, id, percentage).unwrap();
     }
 
+    /// Returns the effective protocol fee percentage for a specific group.
+    ///
+    /// If the group has a group-specific override set via [`set_group_protocol_fee`],
+    /// that value is returned. Otherwise, the global fee set by [`set_protocol_fee`]
+    /// is returned as a fallback.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` — The Soroban execution environment.
+    /// * `id` — 32-byte unique identifier of the payment group.
+    ///
+    /// # Return Value
+    ///
+    /// Returns the effective fee as a `u32`. For global fees this is in basis
+    /// points (0–10 000); for group overrides it is a whole percentage (0–100).
     pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32 {
         autoshare_logic::get_group_protocol_fee(env, id)
     }
@@ -827,68 +842,78 @@ impl AutoShareContract {
         (fee, recipient)
     }
 
-    /// Sets the protocol fee percentage and recipient address (admin only).
+    /// Sets the global protocol fee percentage and the fee recipient address.
     ///
-    /// This function updates the global protocol fee configuration that determines
-    /// what percentage of distributions are collected as protocol fees and which
-    /// address receives those fees.
+    /// Updates the contract-wide fee configuration that determines what percentage
+    /// of each distribution is collected as a protocol fee and which address
+    /// receives those fees. This setting applies to all groups that do not have a
+    /// group-specific override (see [`set_group_protocol_fee`]).
     ///
     /// # Arguments
     ///
-    /// * `env` - The Soroban environment.
-    /// * `fee` - New protocol fee in basis points (1 bp = 0.01%).
-    ///   Valid range: 0 to 10,000 (where 10,000 = 100%).
-    /// * `recipient` - Stellar address that will receive collected protocol fees.
-    /// * `admin` - Current contract admin address. Must authorize this call.
+    /// * `env` — The Soroban execution environment.
+    /// * `fee` — New protocol fee in **basis points** (1 bp = 0.01 %).
+    ///   Valid range: `0` (fee-free) to `10_000` (100 %).
+    ///   Common values: `50` = 0.5 %, `100` = 1 %, `500` = 5 %.
+    /// * `recipient` — Stellar [`Address`] that will receive collected protocol
+    ///   fees on every distribution. Replaces any previously stored recipient.
+    /// * `admin` — Current contract admin address. Must authorize this call.
     ///
     /// # Authorization
     ///
     /// Only the contract admin can call this function. The admin address must
-    /// provide valid Soroban authentication.
+    /// provide valid Soroban authentication (`admin.require_auth()`).
     ///
     /// # Validation
     ///
-    /// * Fee must be <= 10,000 basis points (100%)
-    /// * Caller must be the current admin
+    /// | Condition | Error |
+    /// |---|---|
+    /// | `fee > 10_000` | [`Error::InvalidInput`] |
+    /// | `admin` is not the contract admin | [`Error::Unauthorized`] |
     ///
-    /// # Events
+    /// # Emitted Events
     ///
-    /// Emits a `ProtocolFeeUpdated` event containing:
-    /// - Admin address (topic)
-    /// - Old fee percentage
-    /// - New fee percentage
-    /// - Old recipient address
-    /// - New recipient address
+    /// Emits [`ProtocolFeeUpdated`](crate::base::events::ProtocolFeeUpdated):
+    ///
+    /// | Field | Type | Description |
+    /// |---|---|---|
+    /// | `admin` *(topic)* | `Address` | Admin who performed the update |
+    /// | `old_fee` | `u32` | Previous fee in basis points |
+    /// | `new_fee` | `u32` | New fee in basis points |
+    /// | `old_recipient` | `Address` | Previous fee recipient |
+    /// | `new_recipient` | `Address` | New fee recipient |
     ///
     /// # Storage
     ///
-    /// Updates two persistent storage keys:
-    /// - `ProtocolFee` - Stores the fee percentage
-    /// - `ProtocolFeeRecipient` - Stores the recipient address
-    ///
-    /// Both keys are bumped to ensure they don't expire.
+    /// Updates two persistent ledger entries (TTL is bumped on each write):
+    /// - `DataKey::ProtocolFee` — stores the fee in basis points.
+    /// - `DataKey::ProtocolFeeRecipient` — stores the recipient address.
     ///
     /// # Examples
     ///
     /// ```ignore
-    /// // Set 0.5% fee (50 basis points) with new recipient
-    /// contract.set_protocol_fee(50, new_recipient, admin);
+    /// // Set a 0.5 % fee (50 bps) directed to a treasury address.
+    /// contract.set_protocol_fee(50, treasury, admin);
     ///
-    /// // Set 0% fee (no protocol fee)
+    /// // Remove the protocol fee entirely.
     /// contract.set_protocol_fee(0, recipient, admin);
+    ///
+    /// // Set the maximum allowed fee (100 %).
+    /// contract.set_protocol_fee(10_000, recipient, admin);
     /// ```
     ///
     /// # Related Functions
     ///
-    /// * `get_protocol_fee()` - Read current fee configuration
-    /// * `set_group_protocol_fee()` - Set group-specific fee override
+    /// * [`get_protocol_fee`] — Read the current global fee and recipient.
+    /// * [`set_group_protocol_fee`] — Override the fee for a specific group.
+    /// * [`get_group_protocol_fee`] — Resolve the effective fee for a group.
     ///
     /// # Panics
     ///
-    /// Panics if:
-    /// - The caller is not the admin
-    /// - The fee exceeds 10,000 basis points
-    /// - Storage operations fail
+    /// Panics (transaction aborted) if:
+    /// - The caller is not the contract admin.
+    /// - `fee` exceeds 10 000 basis points.
+    /// - Persistent storage operations fail unexpectedly.
     pub fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address) {
         autoshare_logic::set_protocol_fee(env, fee, recipient, admin).unwrap();
     }

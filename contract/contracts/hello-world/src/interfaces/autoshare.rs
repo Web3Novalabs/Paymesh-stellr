@@ -361,10 +361,73 @@ pub trait AutoShareTrait {
     /// Returns the current protocol fee percentage (in basis points) and the fee recipient.
     fn get_protocol_fee(env: Env) -> (u32, Address);
 
-    /// Sets the protocol fee and recipient address (admin only).
+    /// Sets the global protocol fee percentage and the fee recipient address.
+    ///
+    /// Updates the contract-wide fee that is deducted from every distribution for
+    /// groups that do not have a group-specific override. Only the contract admin
+    /// may call this function.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` — The Soroban execution environment.
+    /// * `fee` — New fee in **basis points** (0 = 0 %, 10 000 = 100 %).
+    /// * `recipient` — [`Address`] that will receive collected protocol fees.
+    /// * `admin` — Current contract admin address. Must authorize this call.
+    ///
+    /// # Authorization
+    ///
+    /// Requires `admin.require_auth()` and the address must match the stored
+    /// contract admin. Non-admin callers receive [`Error::Unauthorized`].
+    ///
+    /// # Validation
+    ///
+    /// * `fee` must be ≤ 10 000 basis points (100 %). Values above this limit
+    ///   return [`Error::InvalidInput`].
+    ///
+    /// # Emitted Events
+    ///
+    /// Emits `ProtocolFeeUpdated { admin, old_fee, new_fee, old_recipient, new_recipient }`.
+    ///
+    /// # Panics
+    ///
+    /// Panics (transaction aborted) if:
+    /// - The caller is not the contract admin.
+    /// - `fee` exceeds 10 000 basis points.
     fn set_protocol_fee(env: Env, fee: u32, recipient: Address, admin: Address);
 
-    /// Sets the group-specific protocol fee percentage (admin only).
+    /// Sets a group-specific protocol fee percentage, overriding the global value.
+    ///
+    /// Groups with an override use this percentage instead of the global fee
+    /// returned by [`get_protocol_fee`]. Groups without an override continue to
+    /// inherit the global fee. Only the contract admin may call this function.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` — The Soroban execution environment.
+    /// * `admin` — Contract admin address. Must authorize this call.
+    /// * `id` — 32-byte unique identifier of the target payment group.
+    /// * `percentage` — New fee as a whole percentage (0–100).
+    ///
+    /// # Authorization
+    ///
+    /// Requires `admin.require_auth()` and the address must match the stored
+    /// contract admin. Non-admin callers receive [`Error::Unauthorized`].
+    ///
+    /// # Validation
+    ///
+    /// * The group identified by `id` must exist; otherwise returns [`Error::NotFound`].
+    /// * `percentage` must be ≤ 100; otherwise returns [`Error::InvalidAmount`].
+    ///
+    /// # Emitted Events
+    ///
+    /// Emits `GroupProtocolFeeUpdated { group_id, old_fee, new_fee }`.
+    ///
+    /// # Panics
+    ///
+    /// Panics (transaction aborted) if:
+    /// - The caller is not the contract admin.
+    /// - The group does not exist.
+    /// - `percentage` exceeds 100.
     fn set_group_protocol_fee(env: Env, admin: Address, id: BytesN<32>, percentage: u32);
 
     /// Returns the protocol fee percentage for a specific group (falls back to global).

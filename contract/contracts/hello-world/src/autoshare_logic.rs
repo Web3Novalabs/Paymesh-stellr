@@ -3459,6 +3459,92 @@ pub fn get_protocol_fee(env: Env) -> (u32, Address) {
     (fee, recipient)
 }
 
+/// Updates the global protocol fee percentage and the fee recipient address.
+///
+/// This is the primary administrative function for configuring how much of each
+/// distribution is collected as a protocol fee and where those fees are sent.
+/// The fee applies to all groups that do not have a group-specific override set
+/// via [`set_group_protocol_fee`].
+///
+/// # Arguments
+///
+/// * `env` — The Soroban execution environment.
+/// * `fee` — New protocol fee expressed in **basis points** (bps).
+///   - `0` = 0 % (fee-free)
+///   - `100` = 1 %
+///   - `5000` = 50 %
+///   - `10000` = 100 % (maximum allowed)
+/// * `recipient` — Stellar [`Address`] that will receive the collected protocol
+///   fees on every distribution. Replaces any previously stored recipient.
+/// * `admin` — The current contract administrator address. Must provide valid
+///   Soroban authorization for this call.
+///
+/// # Authorization
+///
+/// Requires `admin.require_auth()`. The address must also match the stored
+/// contract admin (verified by [`require_admin`]). Any other caller will
+/// receive [`Error::Unauthorized`].
+///
+/// # Validation
+///
+/// | Condition | Error |
+/// |---|---|
+/// | `fee > 10_000` (> 100 %) | [`Error::InvalidInput`] |
+/// | `admin` is not the contract admin | [`Error::Unauthorized`] |
+///
+/// # Storage
+///
+/// Writes to two persistent ledger entries and bumps their TTL:
+///
+/// | Key | Value |
+/// |---|---|
+/// | `DataKey::ProtocolFee` | `fee: u32` |
+/// | `DataKey::ProtocolFeeRecipient` | `recipient: Address` |
+///
+/// # Emitted Events
+///
+/// On success, emits [`ProtocolFeeUpdated`](crate::base::events::ProtocolFeeUpdated):
+///
+/// | Field | Type | Description |
+/// |---|---|---|
+/// | `admin` *(topic)* | `Address` | Admin who performed the update |
+/// | `old_fee` | `u32` | Previous fee in basis points |
+/// | `new_fee` | `u32` | New fee in basis points |
+/// | `old_recipient` | `Address` | Previous fee recipient |
+/// | `new_recipient` | `Address` | New fee recipient |
+///
+/// # Return Value
+///
+/// Returns `Ok(())` on success. The public contract entry point in `lib.rs`
+/// calls `.unwrap()`, so any `Err` variant causes a contract panic.
+///
+/// # Panics
+///
+/// The entry point (`lib.rs`) unwraps this result, so the contract will panic
+/// (transaction aborted) when:
+/// - The caller is not the admin.
+/// - `fee` exceeds 10 000 basis points.
+/// - Persistent storage operations fail unexpectedly.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Set a 0.5 % fee (50 bps) and direct fees to a treasury address.
+/// contract.set_protocol_fee(50, treasury_address, admin);
+///
+/// // Remove the protocol fee entirely.
+/// contract.set_protocol_fee(0, recipient, admin);
+///
+/// // Set the maximum allowed fee (100 %).
+/// contract.set_protocol_fee(10_000, recipient, admin);
+/// ```
+///
+/// # Related Functions
+///
+/// * [`get_protocol_fee`] — Read the current global fee and recipient.
+/// * [`set_group_protocol_fee`] — Override the fee for a specific group.
+/// * [`get_group_protocol_fee`] — Resolve the effective fee for a group
+///   (falls back to the global value when no override exists).
 pub fn set_protocol_fee(
     env: Env,
     fee: u32,
@@ -3705,6 +3791,86 @@ pub fn get_depositor_history(env: Env, depositor: Address) -> Vec<DepositRecord>
     history
 }
 
+/// Sets a group-specific protocol fee percentage, overriding the global value.
+///
+/// When a group has its own fee override, every call to [`get_group_protocol_fee`]
+/// for that group returns this value instead of the global fee set by
+/// [`set_protocol_fee`]. Groups without an override continue to inherit the
+/// global fee transparently.
+///
+/// # Arguments
+///
+/// * `env` — The Soroban execution environment.
+/// * `admin` — The contract administrator address. Must provide valid Soroban
+///   authorization.
+/// * `id` — 32-byte unique identifier of the target payment group.
+/// * `percentage` — New fee expressed as a **whole percentage** (0–100).
+///   Note: unlike the global fee which uses basis points, this parameter is a
+///   direct percentage value (e.g. `5` = 5 %).
+///
+/// # Authorization
+///
+/// Requires `admin.require_auth()`. The address must also match the stored
+/// contract admin (verified by [`require_admin`]). Any other caller will
+/// receive [`Error::Unauthorized`].
+///
+/// # Validation
+///
+/// | Condition | Error |
+/// |---|---|
+/// | Group `id` does not exist | [`Error::NotFound`] |
+/// | `percentage > 100` | [`Error::InvalidAmount`] |
+/// | `admin` is not the contract admin | [`Error::Unauthorized`] |
+///
+/// # Storage
+///
+/// Writes to one persistent ledger entry and bumps its TTL:
+///
+/// | Key | Value |
+/// |---|---|
+/// | `DataKey::GroupProtocolFee(id)` | `percentage: u32` |
+///
+/// # Emitted Events
+///
+/// On success, emits [`GroupProtocolFeeUpdated`](crate::base::events::GroupProtocolFeeUpdated):
+///
+/// | Field | Type | Description |
+/// |---|---|---|
+/// | `group_id` *(topic)* | `BytesN<32>` | The group whose fee was updated |
+/// | `old_fee` | `u32` | Previous effective fee for this group |
+/// | `new_fee` | `u32` | New fee percentage |
+///
+/// > **Note:** `old_fee` is resolved via [`get_group_protocol_fee`], so if the
+/// > group had no prior override it reflects the current global fee.
+///
+/// # Return Value
+///
+/// Returns `Ok(())` on success. The public entry point in `lib.rs` calls
+/// `.unwrap()`, so any `Err` variant causes a contract panic.
+///
+/// # Panics
+///
+/// The entry point (`lib.rs`) unwraps this result, so the contract will panic
+/// (transaction aborted) when:
+/// - The caller is not the admin.
+/// - The group does not exist.
+/// - `percentage` exceeds 100.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Give group A a 3 % fee override while the global fee is 10 %.
+/// contract.set_group_protocol_fee(admin, group_id, 3);
+///
+/// // Make a specific group fee-free.
+/// contract.set_group_protocol_fee(admin, group_id, 0);
+/// ```
+///
+/// # Related Functions
+///
+/// * [`set_protocol_fee`] — Set the global fallback fee.
+/// * [`get_group_protocol_fee`] — Resolve the effective fee for a group.
+/// * [`get_protocol_fee`] — Read the current global fee and recipient.
 pub fn set_group_protocol_fee(
     env: Env,
     admin: Address,

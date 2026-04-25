@@ -100,28 +100,180 @@ These events are essential for the frontend transaction history page and analyti
 
 ## Protocol Configuration
 
+This section covers the two functions that control how protocol fees are applied
+across the contract. Fees are deducted from distributions before member payouts.
+
+---
+
 ### set_protocol_fee
 
-Updates the global protocol fee percentage and the recipient address. Only the contract admin can call this function.
+Sets the **global** protocol fee percentage and the address that receives those
+fees. This value is the contract-wide default; any group without its own override
+inherits it.
 
-**Arguments:**
-- `fee`: New fee in basis points (0–10000, where 10000 = 100%).
-- `recipient`: The `Address` that will receive protocol-level fees.
-- `admin`: The current contract admin address (must authorize).
+Only the contract admin can call this function.
 
-**Events:**
-- Emits `ProtocolFeeUpdated { admin, old_fee, new_fee, old_recipient, new_recipient }`.
+#### Entry point
 
-**Panics:**
-- If `admin` is not the authorized contract administrator.
-- If `fee` exceeds 10000 bps.
+```rust
+pub fn set_protocol_fee(
+    env: Env,
+    fee: u32,
+    recipient: Address,
+    admin: Address,
+)
+```
+
+#### Arguments
+
+| Parameter | Type | Description |
+|---|---|---|
+| `env` | `Env` | Soroban execution environment |
+| `fee` | `u32` | New fee in **basis points** (0 = 0 %, 10 000 = 100 %) |
+| `recipient` | `Address` | Stellar address that receives collected protocol fees |
+| `admin` | `Address` | Current contract admin; must authorize this call |
+
+> **Basis-point reference:** 1 bp = 0.01 %. Common values: `50` = 0.5 %, `100` = 1 %, `500` = 5 %.
+
+#### How it works
+
+1. `admin.require_auth()` — enforces Soroban authorization.
+2. `require_admin(&env, &admin)` — verifies the caller is the stored contract admin.
+3. Validates `fee ≤ 10 000`; rejects with `InvalidInput` otherwise.
+4. Reads the current `old_fee` and `old_recipient` from persistent storage.
+5. Writes `fee` to `DataKey::ProtocolFee` and `recipient` to `DataKey::ProtocolFeeRecipient`.
+6. Bumps the TTL of both storage keys.
+7. Emits `ProtocolFeeUpdated`.
+
+#### Return value
+
+`()` — no return value. The entry point calls `.unwrap()`, so any error panics the transaction.
+
+#### Emitted events
+
+| Event | Fields | When |
+|---|---|---|
+| `ProtocolFeeUpdated` | `admin` *(topic)*, `old_fee`, `new_fee`, `old_recipient`, `new_recipient` | Always on success |
+
+#### Error conditions
+
+| Error | Condition |
+|---|---|
+| `Unauthorized` | `admin` is not the contract administrator |
+| `InvalidInput` | `fee` exceeds 10 000 basis points (100 %) |
+
+> **Panics** if the caller is not the admin, if `fee > 10 000`, or if storage operations fail.
+
+#### Storage keys affected
+
+| Key | Type | Description |
+|---|---|---|
+| `DataKey::ProtocolFee` | `u32` | Global fee in basis points |
+| `DataKey::ProtocolFeeRecipient` | `Address` | Fee recipient address |
+
+---
+
+### set_group_protocol_fee
+
+Sets a **group-specific** protocol fee percentage, overriding the global value
+for a single group. Groups without an override continue to inherit the global fee
+from `set_protocol_fee`.
+
+Only the contract admin can call this function.
+
+#### Entry point
+
+```rust
+pub fn set_group_protocol_fee(
+    env: Env,
+    admin: Address,
+    id: BytesN<32>,
+    percentage: u32,
+)
+```
+
+#### Arguments
+
+| Parameter | Type | Description |
+|---|---|---|
+| `env` | `Env` | Soroban execution environment |
+| `admin` | `Address` | Contract admin address; must authorize this call |
+| `id` | `BytesN<32>` | 32-byte unique identifier of the target payment group |
+| `percentage` | `u32` | New fee as a **whole percentage** (0–100) |
+
+> **Note:** Unlike the global fee (basis points), this parameter is a direct
+> percentage — `5` means 5 %, not 0.05 %.
+
+#### How it works
+
+1. `admin.require_auth()` — enforces Soroban authorization.
+2. `require_admin(&env, &admin)` — verifies the caller is the stored contract admin.
+3. Checks that the group identified by `id` exists; rejects with `NotFound` otherwise.
+4. Validates `percentage ≤ 100`; rejects with `InvalidAmount` otherwise.
+5. Reads the current effective fee via `get_group_protocol_fee` (falls back to global if no prior override).
+6. Writes `percentage` to `DataKey::GroupProtocolFee(id)` and bumps its TTL.
+7. Emits `GroupProtocolFeeUpdated`.
+
+#### Return value
+
+`()` — no return value. The entry point calls `.unwrap()`, so any error panics the transaction.
+
+#### Emitted events
+
+| Event | Fields | When |
+|---|---|---|
+| `GroupProtocolFeeUpdated` | `group_id` *(topic)*, `old_fee`, `new_fee` | Always on success |
+
+#### Error conditions
+
+| Error | Condition |
+|---|---|
+| `Unauthorized` | `admin` is not the contract administrator |
+| `NotFound` | No group exists with the given `id` |
+| `InvalidAmount` | `percentage` exceeds 100 |
+
+> **Panics** if the caller is not the admin, if the group does not exist, or if `percentage > 100`.
+
+#### Storage keys affected
+
+| Key | Type | Description |
+|---|---|---|
+| `DataKey::GroupProtocolFee(id)` | `u32` | Per-group fee percentage override |
+
+---
 
 ### get_protocol_fee
 
-Returns the current protocol fee percentage and recipient address.
+Returns the current global protocol fee and recipient address.
 
-**Returns:**
-- `(u32, Address)`: The current fee in basis points and the recipient address.
+```rust
+pub fn get_protocol_fee(env: Env) -> (u32, Address)
+```
 
-**Diagnostics:**
-- Emits `ProtocolFeeRead { fee, recipient }` on every invocation for off-chain analytics and usage tracking.
+**Returns:** `(fee: u32, recipient: Address)` — fee in basis points; recipient defaults to the contract admin if never explicitly set.
+
+**Side effect:** Emits `ProtocolFeeRead { fee, recipient }` on every call for off-chain analytics.
+
+---
+
+### get_group_protocol_fee
+
+Returns the effective protocol fee for a specific group.
+
+```rust
+pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32
+```
+
+**Returns:** The group-specific override if one exists, otherwise the global fee from `get_protocol_fee`.
+
+---
+
+### Fee resolution order
+
+```
+distribute(group_id, ...)
+    └─ get_group_protocol_fee(group_id)
+           ├─ GroupProtocolFee(group_id) exists? → use group override
+           └─ otherwise → use DataKey::ProtocolFee (global)
+```
+
