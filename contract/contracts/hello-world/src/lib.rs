@@ -95,10 +95,11 @@ impl AutoShareContract {
             .unwrap();
     }
 
-    /// Creates a payment group (AutoShare plan). Semantically identical to [`Self::create`].
+    /// Creates a payment group with a designated admin (creator), member limit, and initial
+    /// subscription configuration.
     ///
-    /// This entrypoint exists for integrators and documentation that refer to
-    /// “payment group” lifecycle naming.
+    /// The creator pays `usage_count x usage_fee` tokens upfront. The group starts active with
+    /// an empty member list; add members afterwards with `add_group_member` or `batch_add_members`.
     pub fn create_payment_group(
         env: Env,
         id: BytesN<32>,
@@ -107,7 +108,7 @@ impl AutoShareContract {
         usage_count: u32,
         payment_token: Address,
     ) {
-        autoshare_logic::create_autoshare(env, id, name, creator, usage_count, payment_token)
+        autoshare_logic::create_payment_group(env, id, name, creator, usage_count, payment_token)
             .unwrap();
     }
 

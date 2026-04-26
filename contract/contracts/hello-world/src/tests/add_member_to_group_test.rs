@@ -1,4 +1,3 @@
-use crate::base::types::GroupMember;
 use crate::test_utils::{create_test_group, mint_tokens, setup_test_env};
 use crate::AutoShareContractClient;
 use soroban_sdk::{testutils::Address as _, Address, Vec};
@@ -440,21 +439,19 @@ fn test_add_member_to_group_after_update_members_succeeds() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let existing_member = Address::generate(env);
-    let mut initial_members = Vec::new(env);
-    initial_members.push_back(GroupMember {
-        address: existing_member.clone(),
-        percentage: 70,
-    });
-
+    // Create group with no initial members
     let id = create_test_group(
         env,
         &test_env.autoshare_contract,
         &creator,
-        &initial_members,
+        &Vec::new(env),
         5,
         &token,
     );
+
+    // Add first member with 70% via add_member_to_group
+    let existing_member = Address::generate(env);
+    client.add_member_to_group(&id, &creator, &existing_member, &70);
 
     let new_member = Address::generate(env);
     // 70 + 30 = 100 — valid

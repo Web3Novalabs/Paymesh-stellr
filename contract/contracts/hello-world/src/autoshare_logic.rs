@@ -3,10 +3,10 @@ use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
     emit_fundraising_target_updated, emit_funds_deposited, emit_group_members_queried,
     emit_group_protocol_fee_updated, emit_group_summary_queried, emit_max_members_updated,
-    emit_member_added, emit_member_removed, emit_payment_group_deactivated,
-    emit_protocol_fee_set, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
-    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
-    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_member_added, emit_member_removed, emit_payment_group_deactivated, emit_usage_fee_updated,
+    AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
+    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated,
+    GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
@@ -217,6 +217,97 @@ pub fn create_autoshare(
     Ok(())
 }
 
+/// Creates a new payment group with a designated admin (creator), member limit, and initial
+/// subscription configuration.
+///
+/// Semantically identical to [`create_autoshare`] but exposed under the "payment group"
+/// lifecycle naming used by the protocol's public interface. The creator pays
+/// `usage_count × usage_fee` tokens upfront; the group starts active with an empty member list.
+///
+/// # Errors
+///
+/// | Error | Condition |
+/// |---|---|
+/// | `ContractPaused` | The contract is currently paused. |
+/// | `EmptyName` | `name` is empty, whitespace-only, or exceeds 60 characters. |
+/// | `AlreadyExists` | A group with the given `id` already exists. |
+/// | `InvalidUsageCount` | `usage_count` is 0. |
+/// | `UnsupportedToken` | `payment_token` is not on the supported-token list. |
+pub fn create_payment_group(
+    env: Env,
+    id: BytesN<32>,
+    name: String,
+    creator: Address,
+    usage_count: u32,
+    payment_token: Address,
+) -> Result<(), Error> {
+    creator.require_auth();
+
+    if get_paused_status(&env) {
+        return Err(Error::ContractPaused);
+    }
+
+    if !is_valid_name(&name) {
+        return Err(Error::EmptyName);
+    }
+
+    let key = DataKey::AutoShare(id.clone());
+    if env.storage().persistent().has(&key) {
+        bump_persistent(&env, &key);
+        return Err(Error::AlreadyExists);
+    }
+
+    if usage_count == 0 {
+        return Err(Error::InvalidUsageCount);
+    }
+
+    if !is_token_supported(env.clone(), payment_token.clone()) {
+        return Err(Error::UnsupportedToken);
+    }
+
+    let usage_fee = get_usage_fee(env.clone());
+    let total_cost = (usage_count as i128) * (usage_fee as i128);
+
+    let token_client = token::Client::new(&env, &payment_token);
+    token_client.transfer(&creator, env.current_contract_address(), &total_cost);
+
+    let details = AutoShareDetails {
+        id: id.clone(),
+        name,
+        metadata: String::from_str(&env, ""),
+        creator: creator.clone(),
+        usage_count,
+        total_usages_paid: usage_count,
+        members: Vec::new(&env),
+        is_active: true,
+    };
+
+    env.storage().persistent().set(&key, &details);
+    bump_persistent(&env, &key);
+
+    let all_groups_key = DataKey::AllGroups;
+    let mut all_groups: Vec<BytesN<32>> = env
+        .storage()
+        .persistent()
+        .get(&all_groups_key)
+        .unwrap_or(Vec::new(&env));
+    all_groups.push_back(id.clone());
+    env.storage().persistent().set(&all_groups_key, &all_groups);
+    bump_persistent(&env, &all_groups_key);
+
+    record_payment(
+        env.clone(),
+        creator.clone(),
+        id.clone(),
+        usage_count,
+        total_cost,
+    );
+
+    AutoshareCreated { creator, id }.publish(&env);
+
+    Ok(())
+}
+
 pub fn get_autoshare(env: Env, id: BytesN<32>) -> Result<AutoShareDetails, Error> {
     let key = DataKey::AutoShare(id);
     let result: Option<AutoShareDetails> = env.storage().persistent().get(&key);
@@ -343,7 +434,7 @@ pub fn get_group_summary(env: Env, id: BytesN<32>) -> Result<GroupSummary, Error
         bump_persistent(&env, &dist_key);
     }
 
-    emit_group_summary_queried(&env, id.clone(), details.members.len() as u32, details.usage_count);
+    emit_group_summary_queried(&env, id.clone(), details.members.len(), details.usage_count);
 
     Ok(GroupSummary {
         id: details.id,

@@ -1,9 +1,7 @@
-#![cfg(test)]
-
 use crate::base::types::GroupMember;
 use crate::test_utils::{create_test_group, setup_test_env};
 use crate::AutoShareContractClient;
-use soroban_sdk::{Address, Vec};
+use soroban_sdk::{testutils::Address as _, Address, IntoVal, Vec};
 
 // ─── Test 1: Maximum Allowed Capacity ───────────────────────────────────────
 // Create a group and add members until exactly reaching the maximum capacity.
@@ -22,12 +20,19 @@ fn test_add_member_to_group_max_capacity_boundary() {
     let max_capacity = 10u32;
     client.set_max_members(&admin, &max_capacity);
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 5, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        5,
+        &token,
+    );
 
     // Add (max_capacity - 1) members, leaving room for 1 more
     // Since creator is not a member initially, we add up to max_capacity
     // We'll give each a 1% share
-    for i in 0..max_capacity {
+    for _i in 0..max_capacity {
         let member = Address::generate(env);
         client.add_member_to_group(&id, &creator, &member, &1);
     }
@@ -36,15 +41,10 @@ fn test_add_member_to_group_max_capacity_boundary() {
 
     // Adding one more should exceed max capacity
     let extra_member = Address::generate(env);
-    let result = env.try_invoke_contract::<(), _>(
+    let result = env.try_invoke_contract::<(), crate::base::errors::Error>(
         &test_env.autoshare_contract,
         &soroban_sdk::Symbol::new(env, "add_member_to_group"),
-        (
-            id.clone(),
-            creator.clone(),
-            extra_member.clone(),
-            1u32,
-        ).into_val(env),
+        (id.clone(), creator.clone(), extra_member.clone(), 1u32).into_val(env),
     );
 
     assert!(result.is_err(), "Expected MaxMembersExceeded error");
@@ -62,7 +62,14 @@ fn test_add_member_to_group_percentage_overflow() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
     let member = Address::generate(env);
 
     // Pass u32::MAX. Should panic with InvalidInput because > 100.
@@ -88,7 +95,14 @@ fn test_add_member_to_group_total_percentage_overflow() {
         percentage: 99,
     });
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &initial_members, 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &initial_members,
+        3,
+        &token,
+    );
     let m2 = Address::generate(env);
 
     client.add_member_to_group(&id, &creator, &m2, &2); // 99 + 2 = 101
@@ -105,19 +119,21 @@ fn test_add_member_to_group_state_revert_on_failure() {
     let creator = test_env.users.get(0).unwrap().clone();
     let token = test_env.mock_tokens.get(0).unwrap().clone();
 
-    let id = create_test_group(env, &test_env.autoshare_contract, &creator, &Vec::new(env), 3, &token);
+    let id = create_test_group(
+        env,
+        &test_env.autoshare_contract,
+        &creator,
+        &Vec::new(env),
+        3,
+        &token,
+    );
     let member = Address::generate(env);
 
     // Attempt to add a member with invalid percentage (0)
-    let result = env.try_invoke_contract::<(), _>(
+    let result = env.try_invoke_contract::<(), crate::base::errors::Error>(
         &test_env.autoshare_contract,
         &soroban_sdk::Symbol::new(env, "add_member_to_group"),
-        (
-            id.clone(),
-            creator.clone(),
-            member.clone(),
-            0u32,
-        ).into_val(env),
+        (id.clone(), creator.clone(), member.clone(), 0u32).into_val(env),
     );
     assert!(result.is_err(), "Expected transaction to fail");
 

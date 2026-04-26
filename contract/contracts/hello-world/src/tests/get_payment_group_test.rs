@@ -124,7 +124,10 @@ fn test_get_payment_group_emits_tracking_event() {
     let events = env.events().all();
     let tracking_event = events
         .iter()
-        .find(|e| soroban_sdk::Symbol::from_val(env, &e.1.get(0).unwrap()) == soroban_sdk::Symbol::new(env, "group_summary_queried"))
+        .find(|e| {
+            soroban_sdk::Symbol::from_val(env, &e.1.get(0).unwrap())
+                == soroban_sdk::Symbol::new(env, "group_summary_queried")
+        })
         .expect("group_summary_queried event not found");
 
     // topics: [SYMBOL(group_summary_queried), group_id]
