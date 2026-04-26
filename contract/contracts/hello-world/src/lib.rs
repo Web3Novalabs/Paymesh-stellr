@@ -354,13 +354,83 @@ impl AutoShareContract {
         autoshare_logic::batch_add_members(env, id, caller, new_members).unwrap();
     }
 
-    /// Removes a single member from a group. Only the creator can call; group must be active.
-    /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
+    /// Removes a single member from a payment group.
+    ///
+    /// Only the group creator (`caller`) may call this function, and the group must be
+    /// active. The removed member's percentage share is freed but **not** redistributed
+    /// — the remaining members keep their current percentages, which may no longer sum
+    /// to 100 %. Call [`Self::update_members`] afterwards to restore a valid split.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` — The Soroban execution environment.
+    /// * `id` — 32-byte unique identifier of the target group.
+    /// * `caller` — Group creator address. Must authorize this call.
+    /// * `member_address` — Address of the member to remove.
+    ///
+    /// # Authorization
+    ///
+    /// Requires `caller.require_auth()`. The caller must be the stored group creator.
+    ///
+    /// # Emitted events
+    ///
+    /// Emits [`AutoshareUpdated`] and [`MemberRemoved`]:
+    /// - `MemberRemoved { group_id (topic), member (topic), removed_percentage, pending_earnings }`
+    ///
+    /// # Panics
+    ///
+    /// Panics (transaction aborted) if:
+    /// - The contract is paused.
+    /// - The group does not exist.
+    /// - `caller` is not the group creator.
+    /// - The group is inactive.
+    /// - `member_address` is not a current member of the group.
+    ///
+    /// # Related functions
+    ///
+    /// * [`Self::remove_member_from_group`] — alias with identical behaviour.
+    /// * [`Self::update_members`] — restore a valid 100 % split after removal.
+    /// * [`Self::get_member_earnings`] — query a member's accrued earnings.
     pub fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address) {
         autoshare_logic::remove_group_member(env, id, caller, member_address).unwrap();
     }
 
-    /// Removes a member from a payment group. Semantically identical to [`Self::remove_group_member`].
+    /// Removes a member from a payment group.
+    ///
+    /// Semantically identical to [`Self::remove_group_member`] — this entry point exists
+    /// so integrators and tests can use the more descriptive name
+    /// `remove_member_from_group`.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` — The Soroban execution environment.
+    /// * `id` — 32-byte unique identifier of the target group.
+    /// * `caller` — Group creator address. Must authorize this call.
+    /// * `member_address` — Address of the member to remove.
+    ///
+    /// # Authorization
+    ///
+    /// Requires `caller.require_auth()`. The caller must be the stored group creator.
+    ///
+    /// # Emitted events
+    ///
+    /// Emits [`AutoshareUpdated`] and [`MemberRemoved`]:
+    /// - `MemberRemoved { group_id (topic), member (topic), removed_percentage, pending_earnings }`
+    ///
+    /// # Panics
+    ///
+    /// Panics (transaction aborted) if:
+    /// - The contract is paused.
+    /// - The group does not exist.
+    /// - `caller` is not the group creator.
+    /// - The group is inactive.
+    /// - `member_address` is not a current member of the group.
+    ///
+    /// # Related functions
+    ///
+    /// * [`Self::remove_group_member`] — canonical alias.
+    /// * [`Self::update_members`] — restore a valid 100 % split after removal.
+    /// * [`Self::get_member_earnings`] — query a member's accrued earnings.
     pub fn remove_member_from_group(
         env: Env,
         id: BytesN<32>,
@@ -963,34 +1033,6 @@ impl AutoShareContract {
     pub fn get_depositor_history(env: Env, depositor: Address) -> Vec<base::types::DepositRecord> {
         autoshare_logic::get_depositor_history(env, depositor)
     }
-
-    // ============================================================================
-    // Unified Protocol Fee (set_protocol_fee event emission)
-    // ============================================================================
-
-    /// Unified protocol-fee setter.
-    ///
-    /// * `group_id = None`  — updates the global fee (basis points, 0–10 000).
-    /// * `group_id = Some(id)` — sets a group-specific override (whole %, 0–100).
-    ///
-    /// Emits `ProtocolFeeSet { admin (topic), group_id, old_fee, new_fee, timestamp }`.
-    pub fn set_protocol_fee_v2(
-        env: Env,
-        admin: Address,
-        fee: u32,
-        group_id: Option<BytesN<32>>,
-    ) {
-        autoshare_logic::set_protocol_fee_unified(env, admin, fee, group_id).unwrap();
-    }
-
-    /// Unified protocol-fee getter.
-    ///
-    /// * `group_id = None`  — returns the global fee in basis points.
-    /// * `group_id = Some(id)` — returns the effective fee for that group
-    ///   (group override if set, otherwise falls back to the global fee).
-    pub fn get_protocol_fee_v2(env: Env, group_id: Option<BytesN<32>>) -> u32 {
-        autoshare_logic::get_protocol_fee_unified(env, group_id)
-    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -1189,7 +1231,3 @@ mod add_member_to_group_boundary_test;
 #[cfg(test)]
 #[path = "tests/add_member_to_group_test.rs"]
 mod add_member_to_group_test;
-
-#[cfg(test)]
-#[path = "tests/set_protocol_fee_test.rs"]
-mod set_protocol_fee_test;

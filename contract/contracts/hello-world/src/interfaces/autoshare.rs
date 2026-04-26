@@ -156,7 +156,22 @@ pub trait AutoShareTrait {
     fn batch_add_members(env: Env, id: BytesN<32>, caller: Address, new_members: Vec<GroupMember>);
 
     /// Removes a single member from a group. Only the creator can call; group must be active.
-    /// After removal, remaining percentages may not sum to 100; call update_members to set a valid split.
+    ///
+    /// After removal, remaining percentages may not sum to 100 %; call
+    /// [`update_members`] to establish a valid split before the next distribution.
+    ///
+    /// # Authorization
+    ///
+    /// Requires `caller.require_auth()`. The caller must be the stored group creator.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ContractPaused`, `NotFound`, `Unauthorized`, `GroupInactive`, or
+    /// `MemberNotFound` on validation failure.
+    ///
+    /// # Emitted events
+    ///
+    /// Emits `AutoshareUpdated` and `MemberRemoved { group_id, member, removed_percentage, pending_earnings }`.
     fn remove_group_member(env: Env, id: BytesN<32>, caller: Address, member_address: Address);
 
     /// Deactivates a group. Only the creator can deactivate.

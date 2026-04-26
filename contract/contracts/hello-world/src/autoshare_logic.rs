@@ -2,11 +2,11 @@ use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
     emit_fundraising_target_updated, emit_funds_deposited, emit_group_members_queried,
-    emit_group_protocol_fee_updated, emit_group_summary_queried, emit_max_members_updated,
-    emit_member_added, emit_member_removed, emit_payment_group_deactivated,
-    emit_protocol_fee_set, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
-    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
-    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
+    emit_group_protocol_fee_updated, emit_group_summary_queried, emit_max_members_updated, emit_member_added,
+    emit_member_removed, emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred,
+    AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted,
+    GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred,
+    Withdrawal,
 };
 
 use crate::base::types::{
@@ -1011,6 +1011,114 @@ pub fn batch_add_members(
     Ok(())
 }
 
+/// Removes an existing member from a payment group and records their pending earnings at
+/// the time of removal.
+///
+/// This is the shared implementation called by both the [`remove_group_member`] and
+/// [`remove_member_from_group`] public entry points in `lib.rs`. It performs all
+/// validation, mutates persistent storage, updates the reverse membership index, and
+/// emits the appropriate events.
+///
+/// # Arguments
+///
+/// * `env` — The Soroban execution environment.
+/// * `id` — 32-byte unique identifier of the target payment group.
+/// * `caller` — Address of the group creator. Must provide valid Soroban authorization
+///   (`caller.require_auth()`). Any other address receives [`Error::Unauthorized`].
+/// * `member_address` — Address of the member to remove. Must currently be a member of
+///   the group; otherwise returns [`Error::MemberNotFound`].
+///
+/// # Authorization
+///
+/// Requires `caller.require_auth()`. The caller must also be the stored `creator` of the
+/// group. Passing any other address — even the contract admin — returns
+/// [`Error::Unauthorized`].
+///
+/// # Validation
+///
+/// | Condition | Error returned |
+/// |---|---|
+/// | Contract is globally paused | [`Error::ContractPaused`] |
+/// | Group `id` does not exist in storage | [`Error::NotFound`] |
+/// | `caller` is not the group creator | [`Error::Unauthorized`] |
+/// | Group is not active (`is_active == false`) | [`Error::GroupInactive`] |
+/// | `member_address` is not a current member | [`Error::MemberNotFound`] |
+///
+/// # Storage mutations
+///
+/// On success the function writes to three persistent ledger entries and bumps their TTLs:
+///
+/// 1. `DataKey::AutoShare(id)` — the group's member list with the target member removed.
+/// 2. `DataKey::MemberGroups(member_address)` — the reverse index that maps a member
+///    address to the set of group IDs they belong to; the current `id` is removed from
+///    this list.
+///
+/// > **Note:** The member's accumulated earnings stored under
+/// > `DataKey::MemberGroupEarnings(member_address, id)` are **not** deleted. They are
+/// > read and surfaced in the `MemberRemoved` event payload so that off-chain systems can
+/// > reconcile any outstanding balance, but the on-chain record is preserved for
+/// > historical queries.
+///
+/// # Emitted events
+///
+/// Two events are published on success:
+///
+/// 1. [`AutoshareUpdated`] — signals that the group's member list changed.
+///    | Field | Value |
+///    |---|---|
+///    | `id` *(topic)* | group identifier |
+///    | `updater` *(topic)* | `caller` |
+///    | `name_updated` | `false` |
+///    | `metadata_updated` | `false` |
+///    | `new_creator` | `None` |
+///
+/// 2. [`MemberRemoved`] — carries the removal details for off-chain indexing.
+///    | Field | Type | Description |
+///    |---|---|---|
+///    | `group_id` *(topic)* | `BytesN<32>` | Group the member was removed from |
+///    | `member` *(topic)* | `Address` | Address of the removed member |
+///    | `removed_percentage` | `u32` | Percentage share held at removal time |
+///    | `pending_earnings` | `i128` | Cumulative earnings accrued in this group |
+///
+/// # Return value
+///
+/// Returns `Ok(())` on success. The public entry points in `lib.rs` call `.unwrap()`, so
+/// any `Err` variant causes the transaction to abort (contract panic).
+///
+/// # Panics
+///
+/// The entry points (`lib.rs`) unwrap this result, so the contract will panic when:
+/// - The contract is paused.
+/// - The group does not exist.
+/// - The caller is not the group creator.
+/// - The group is inactive.
+/// - The member address is not found in the group.
+///
+/// # Post-removal state
+///
+/// After removal the remaining members' percentages are **not** automatically
+/// redistributed. Their individual shares are preserved as-is, which means the total
+/// may no longer sum to 100 %. The creator should call [`update_members`] to establish
+/// a valid new split before the next distribution.
+///
+/// # Examples
+///
+/// ```ignore
+/// // Remove member_b from a group; creator must authorize.
+/// contract.remove_member_from_group(group_id, creator, member_b);
+///
+/// // Verify removal
+/// assert!(!contract.is_group_member(group_id, member_b));
+/// ```
+///
+/// # Related functions
+///
+/// * [`add_group_member`] / [`add_member_to_group`] — add a member to a group.
+/// * [`batch_add_members`] — add multiple members in one call.
+/// * [`update_members`] — replace the entire member list (use after removal to
+///   restore a valid 100 % split).
+/// * [`get_group_members`] — query the current member list.
+/// * [`get_member_earnings`] — query a member's accumulated earnings in a group.
 pub fn remove_group_member(
     env: Env,
     id: BytesN<32>,
@@ -3908,75 +4016,5 @@ pub fn get_group_protocol_fee(env: Env, id: BytesN<32>) -> u32 {
         f
     } else {
         get_protocol_fee_val(&env)
-    }
-}
-
-// ============================================================================
-// Unified protocol-fee entry points (Issue: set_protocol_fee event emission)
-// ============================================================================
-
-/// Unified setter: updates the global fee when `group_id` is `None`, or a
-/// group-specific override when `group_id` is `Some(id)`.
-///
-/// Emits `ProtocolFeeSet` with all fields needed for off-chain indexing:
-/// `admin` (indexed topic), `group_id`, `old_fee`, `new_fee`, `timestamp`.
-pub fn set_protocol_fee_unified(
-    env: Env,
-    admin: Address,
-    fee: u32,
-    group_id: Option<BytesN<32>>,
-) -> Result<(), Error> {
-    admin.require_auth();
-    require_admin(&env, &admin)?;
-
-    match group_id.clone() {
-        None => {
-            // Global fee — basis points (0–10 000)
-            if fee > 10000 {
-                return Err(Error::InvalidInput);
-            }
-            let old_fee = get_protocol_fee_val(&env);
-            let fee_key = DataKey::ProtocolFee;
-            env.storage().persistent().set(&fee_key, &fee);
-            bump_persistent(&env, &fee_key);
-
-            emit_protocol_fee_set(&env, admin, None, old_fee, fee);
-        }
-        Some(id) => {
-            // Group-specific override — whole percentage (0–100)
-            if fee > 100 {
-                return Err(Error::InvalidInput);
-            }
-            let group_key = DataKey::AutoShare(id.clone());
-            if !env.storage().persistent().has(&group_key) {
-                return Err(Error::NotFound);
-            }
-            let old_fee = get_group_protocol_fee(env.clone(), id.clone());
-            let key = DataKey::GroupProtocolFee(id.clone());
-            env.storage().persistent().set(&key, &fee);
-            bump_persistent(&env, &key);
-
-            emit_protocol_fee_set(&env, admin, Some(id), old_fee, fee);
-        }
-    }
-
-    Ok(())
-}
-
-/// Unified getter: returns the global fee when `group_id` is `None`, or the
-/// effective fee for a specific group (falls back to global) when `Some(id)`.
-pub fn get_protocol_fee_unified(env: Env, group_id: Option<BytesN<32>>) -> u32 {
-    match group_id {
-        None => get_protocol_fee_val(&env),
-        Some(id) => {
-            let key = DataKey::GroupProtocolFee(id);
-            let fee: Option<u32> = env.storage().persistent().get(&key);
-            if let Some(f) = fee {
-                bump_persistent(&env, &key);
-                f
-            } else {
-                get_protocol_fee_val(&env)
-            }
-        }
     }
 }
