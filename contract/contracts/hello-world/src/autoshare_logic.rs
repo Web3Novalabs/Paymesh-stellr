@@ -1,12 +1,12 @@
 use crate::base::errors::Error;
 use crate::base::events::{
     emit_contribution, emit_creator_is_member, emit_distribution, emit_fundraising_cancelled,
-    emit_fundraising_target_updated, emit_funds_deposited, emit_group_members_queried,
-    emit_group_protocol_fee_updated, emit_group_summary_queried, emit_max_members_updated,
-    emit_member_added, emit_member_removed, emit_payment_group_deactivated, emit_usage_fee_updated,
-    AdminTransferred, AutoshareCreated, AutoshareUpdated, ContractPaused, ContractUnpaused,
-    FundraisingStarted, GroupActivated, GroupDeactivated, GroupDeleted, GroupNameUpdated,
-    GroupOwnershipTransferred, Withdrawal,
+    emit_fundraising_target_updated, emit_funds_deposited, emit_group_members_paginated_queried,
+    emit_group_members_queried, emit_group_protocol_fee_updated, emit_group_summary_queried,
+    emit_max_members_updated, emit_member_added, emit_member_removed,
+    emit_payment_group_deactivated, emit_usage_fee_updated, AdminTransferred, AutoshareCreated,
+    AutoshareUpdated, ContractPaused, ContractUnpaused, FundraisingStarted, GroupActivated,
+    GroupDeactivated, GroupDeleted, GroupNameUpdated, GroupOwnershipTransferred, Withdrawal,
 };
 
 use crate::base::types::{
@@ -709,6 +709,15 @@ pub fn get_group_members_paginated(
         page_members.push_back(all_members.get(i).unwrap());
         i += 1;
     }
+
+    let returned_count = page_members.len();
+
+    // ── Diagnostic tracking ──────────────────────────────────────────────────
+    // Emit a diagnostic event for off-chain analytics tracking pagination usage.
+    // This allows monitoring of pagination patterns, performance characteristics,
+    // and API usage without affecting the read-only behavior or return values.
+    emit_group_members_paginated_queried(&env, id, offset, limit, total, returned_count);
+    // ────────────────────────────────────────────────────────────────────────
 
     Ok(MemberPage {
         members: page_members,

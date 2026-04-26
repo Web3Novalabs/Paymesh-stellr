@@ -582,3 +582,33 @@ pub fn emit_group_summary_queried(
     }
     .publish(env);
 }
+
+/// Emitted when get_group_members_paginated is queried for analytics tracking.
+#[contractevent]
+#[derive(Clone)]
+pub struct GroupMembersPaginatedQueried {
+    #[topic]
+    pub group_id: BytesN<32>,
+    pub offset: u32,
+    pub limit: u32,
+    pub total_members: u32,
+    pub returned_count: u32,
+}
+
+pub fn emit_group_members_paginated_queried(
+    env: &Env,
+    group_id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+    total_members: u32,
+    returned_count: u32,
+) {
+    GroupMembersPaginatedQueried {
+        group_id,
+        offset,
+        limit,
+        total_members,
+        returned_count,
+    }
+    .publish(env);
+}
