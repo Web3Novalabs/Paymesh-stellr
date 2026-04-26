@@ -1120,6 +1120,10 @@ mod create_payment_group_boundary_test;
 mod remove_member_from_group_test;
 
 #[cfg(test)]
+#[path = "tests/remove_member_from_group_boundary_test.rs"]
+mod remove_member_from_group_boundary_test;
+
+#[cfg(test)]
 #[path = "tests/group_lifecycle_test.rs"]
 mod group_lifecycle_test;
 
