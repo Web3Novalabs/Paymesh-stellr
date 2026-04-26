@@ -446,6 +446,7 @@ pub struct ProtocolFeeUpdated {
     pub new_fee: u32,
     pub old_recipient: Address,
     pub new_recipient: Address,
+    pub timestamp: u64,
 }
 
 pub fn emit_protocol_fee_updated(
@@ -462,6 +463,7 @@ pub fn emit_protocol_fee_updated(
         new_fee,
         old_recipient,
         new_recipient,
+        timestamp: env.ledger().timestamp(),
     }
     .publish(env);
 }
@@ -485,6 +487,7 @@ pub struct GroupProtocolFeeUpdated {
     pub group_id: BytesN<32>,
     pub old_fee: u32,
     pub new_fee: u32,
+    pub timestamp: u64,
 }
 
 pub fn emit_group_protocol_fee_updated(
@@ -497,6 +500,37 @@ pub fn emit_group_protocol_fee_updated(
         group_id,
         old_fee,
         new_fee,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
+}
+
+/// Emitted by the unified set_protocol_fee entry point for both global and group-specific updates.
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeSet {
+    #[topic]
+    pub admin: Address,
+    /// None when updating the global fee; Some(group_id) for a group-specific override.
+    pub group_id: Option<BytesN<32>>,
+    pub old_fee: u32,
+    pub new_fee: u32,
+    pub timestamp: u64,
+}
+
+pub fn emit_protocol_fee_set(
+    env: &Env,
+    admin: Address,
+    group_id: Option<BytesN<32>>,
+    old_fee: u32,
+    new_fee: u32,
+) {
+    ProtocolFeeSet {
+        admin,
+        group_id,
+        old_fee,
+        new_fee,
+        timestamp: env.ledger().timestamp(),
     }
     .publish(env);
 }

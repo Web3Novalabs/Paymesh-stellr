@@ -963,6 +963,34 @@ impl AutoShareContract {
     pub fn get_depositor_history(env: Env, depositor: Address) -> Vec<base::types::DepositRecord> {
         autoshare_logic::get_depositor_history(env, depositor)
     }
+
+    // ============================================================================
+    // Unified Protocol Fee (set_protocol_fee event emission)
+    // ============================================================================
+
+    /// Unified protocol-fee setter.
+    ///
+    /// * `group_id = None`  — updates the global fee (basis points, 0–10 000).
+    /// * `group_id = Some(id)` — sets a group-specific override (whole %, 0–100).
+    ///
+    /// Emits `ProtocolFeeSet { admin (topic), group_id, old_fee, new_fee, timestamp }`.
+    pub fn set_protocol_fee_v2(
+        env: Env,
+        admin: Address,
+        fee: u32,
+        group_id: Option<BytesN<32>>,
+    ) {
+        autoshare_logic::set_protocol_fee_unified(env, admin, fee, group_id).unwrap();
+    }
+
+    /// Unified protocol-fee getter.
+    ///
+    /// * `group_id = None`  — returns the global fee in basis points.
+    /// * `group_id = Some(id)` — returns the effective fee for that group
+    ///   (group override if set, otherwise falls back to the global fee).
+    pub fn get_protocol_fee_v2(env: Env, group_id: Option<BytesN<32>>) -> u32 {
+        autoshare_logic::get_protocol_fee_unified(env, group_id)
+    }
 }
 
 // 3. Link the tests (Requirement: Unit Tests)
@@ -1161,3 +1189,7 @@ mod add_member_to_group_boundary_test;
 #[cfg(test)]
 #[path = "tests/add_member_to_group_test.rs"]
 mod add_member_to_group_test;
+
+#[cfg(test)]
+#[path = "tests/set_protocol_fee_test.rs"]
+mod set_protocol_fee_test;
