@@ -1045,12 +1045,7 @@ impl AutoShareContract {
     /// * `group_id = Some(id)` — sets a group-specific override (whole %, 0–100).
     ///
     /// Emits `ProtocolFeeSet { admin (topic), group_id, old_fee, new_fee, timestamp }`.
-    pub fn set_protocol_fee_v2(
-        env: Env,
-        admin: Address,
-        fee: u32,
-        group_id: Option<BytesN<32>>,
-    ) {
+    pub fn set_protocol_fee_v2(env: Env, admin: Address, fee: u32, group_id: Option<BytesN<32>>) {
         autoshare_logic::set_protocol_fee_unified(env, admin, fee, group_id).unwrap();
     }
 
@@ -1220,6 +1215,10 @@ mod create_payment_group_boundary_test;
 #[cfg(test)]
 #[path = "tests/remove_member_from_group_test.rs"]
 mod remove_member_from_group_test;
+
+#[cfg(test)]
+#[path = "tests/remove_member_from_group_boundary_test.rs"]
+mod remove_member_from_group_boundary_test;
 
 #[cfg(test)]
 #[path = "tests/group_lifecycle_test.rs"]

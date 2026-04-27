@@ -98,6 +98,46 @@ pub fn emit_payment_group_deactivated(
     .publish(env);
 }
 
+#[contractevent]
+#[derive(Clone)]
+pub struct PaymentGroupCreated {
+    #[topic]
+    pub id: BytesN<32>,
+    #[topic]
+    pub creator: Address,
+    #[topic]
+    pub payment_token: Address,
+    pub usage_count: u32,
+    pub usage_fee: u32,
+    pub total_cost: i128,
+    pub member_limit: u32,
+    pub timestamp: u64,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn emit_payment_group_created(
+    env: &Env,
+    id: BytesN<32>,
+    creator: Address,
+    payment_token: Address,
+    usage_count: u32,
+    usage_fee: u32,
+    total_cost: i128,
+    member_limit: u32,
+) {
+    PaymentGroupCreated {
+        id,
+        creator,
+        payment_token,
+        usage_count,
+        usage_fee,
+        total_cost,
+        member_limit,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
+}
+
 #[contractevent(data_format = "single-value")]
 #[derive(Clone)]
 pub struct GroupActivated {
