@@ -721,6 +721,15 @@ pub fn get_group_members_paginated(
         i += 1;
     }
 
+    let returned_count = page_members.len();
+
+    // ── Diagnostic tracking ──────────────────────────────────────────────────
+    // Emit a diagnostic event for off-chain analytics tracking pagination usage.
+    // This allows monitoring of pagination patterns, performance characteristics,
+    // and API usage without affecting the read-only behavior or return values.
+    emit_group_members_paginated_queried(&env, id, offset, limit, total, returned_count);
+    // ────────────────────────────────────────────────────────────────────────
+
     Ok(MemberPage {
         members: page_members,
         total,

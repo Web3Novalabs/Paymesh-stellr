@@ -1245,6 +1245,10 @@ mod get_group_members_diagnostics_test;
 mod get_group_members_boundary_test;
 
 #[cfg(test)]
+#[path = "tests/get_group_members_paginated_tracking_test.rs"]
+mod get_group_members_paginated_tracking_test;
+
+#[cfg(test)]
 #[path = "tests/protocol_fee_boundary_test.rs"]
 mod protocol_fee_boundary_test;
 
