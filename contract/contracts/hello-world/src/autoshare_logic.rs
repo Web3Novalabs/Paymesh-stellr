@@ -303,6 +303,17 @@ pub fn create_payment_group(
         total_cost,
     );
 
+    emit_payment_group_created(
+        &env,
+        id.clone(),
+        creator.clone(),
+        payment_token,
+        usage_count,
+        usage_fee,
+        total_cost,
+        get_max_members(&env),
+    );
+
     AutoshareCreated { creator, id }.publish(&env);
 
     Ok(())
