@@ -82,6 +82,288 @@ members with percentage splits that sum to 100 before calling `distribute`.
 
 ---
 
+---
+
+## `get_group_members` — Fetch All Group Members
+
+Retrieves the complete list of all current members in a specific payment group along with their
+percentage allocations. This function also tracks read frequency for analytics purposes.
+
+### Entry point
+
+```rust
+pub fn get_group_members(
+    env: Env,
+    id: BytesN<32>,
+) -> Vec<GroupMember>
+```
+
+### Arguments
+
+| Parameter | Type | Description |
+|---|---|---|
+| `env` | `Env` | Soroban environment |
+| `id` | `BytesN<32>` | Unique group identifier |
+
+### How it works
+
+1. Retrieves the `AutoShareDetails` for the specified group from persistent storage.
+2. Extracts the complete member list from the group details.
+3. Increments a per-group query counter stored at `DataKey::GroupMembersQueryCount(id)`.
+4. Bumps the TTL of the query counter to prevent expiration.
+5. Emits `GroupMembersQueried` event with the group ID, member count, and cumulative query count.
+6. Returns the complete vector of `GroupMember` structs.
+
+### Return value
+
+`Vec<GroupMember>` — A vector containing all members with their addresses and percentage allocations.
+Members are returned in the order they were added to the group.
+
+### Emitted events
+
+| Event | Fields | When |
+|---|---|---|
+| `GroupMembersQueried` | `group_id` (topic), `member_count`, `query_count` | Always on success |
+
+### Error conditions
+
+| Error | Condition |
+|---|---|
+| `NotFound` | No group exists with the given `id` |
+
+> **Panics** if the group does not exist (via `.unwrap()` in the contract entry point).
+
+### Performance considerations
+
+- For groups with more than 20 members, consider using `get_group_members_paginated` to reduce
+  data transfer and improve response times.
+- Each call increments a persistent counter, incurring a small storage write cost.
+- The emitted event enables off-chain indexers to track read patterns without additional RPC calls.
+
+### Off-chain analytics
+
+The `GroupMembersQueried` event allows off-chain systems to:
+- Monitor API usage patterns and identify frequently accessed groups
+- Track read frequency for performance optimization
+- Build analytics dashboards showing group access metrics
+- Detect unusual access patterns for security monitoring
+
+Use `get_group_members_query_count` to retrieve the current query count without incrementing it.
+
+---
+
+## `get_group_members_paginated` — Fetch Group Members with Pagination
+
+Retrieves a paginated subset of all current members in a specific payment group. This function
+provides efficient access to large member lists with automatic page size capping and diagnostic
+event emission for off-chain analytics.
+
+### Entry point
+
+```rust
+pub fn get_group_members_paginated(
+    env: Env,
+    id: BytesN<32>,
+    offset: u32,
+    limit: u32,
+) -> MemberPage
+```
+
+### Arguments
+
+| Parameter | Type | Description |
+|---|---|---|
+| `env` | `Env` | Soroban environment |
+| `id` | `BytesN<32>` | Unique group identifier |
+| `offset` | `u32` | Zero-based starting index for pagination (0 = first member) |
+| `limit` | `u32` | Maximum number of members to return (automatically capped at 20) |
+
+### Input constraints
+
+- `offset` — Can be any `u32` value; if it exceeds the total member count, an empty page is returned
+- `limit` — Automatically capped at `MAX_PAGE_SIZE` (20) to prevent excessive data transfer
+- `id` — Must reference an existing group
+
+### How it works
+
+1. Retrieves the `AutoShareDetails` for the specified group from persistent storage.
+2. Extracts the complete member list and calculates the total count.
+3. Caps the `limit` parameter at `MAX_PAGE_SIZE` (20) to ensure consistent performance.
+4. Calculates the start and end indices for the requested page, handling edge cases:
+   - If `offset >= total`, returns an empty page
+   - If `offset + limit > total`, returns only the remaining members
+5. Extracts the requested page of members from the full list.
+6. Emits `GroupMembersPaginatedQueried` event with pagination details.
+7. Returns a `MemberPage` struct containing the page data and metadata.
+
+### Return value
+
+`MemberPage` — A struct containing:
+- `members` — `Vec<GroupMember>` with the requested page of members (may be empty)
+- `total` — Total number of members in the group (always reflects current count)
+- `offset` — The offset value used for this query (echoed from input)
+- `limit` — The effective limit applied (may be less than requested if capped)
+
+### Pagination behavior
+
+- **Page Size Capping**: The `limit` parameter is automatically capped at 20 members per page
+  to ensure consistent performance and prevent excessive data transfer.
+- **Offset Handling**: If `offset >= total`, an empty `members` vector is returned with `total`
+  still reflecting the actual member count.
+- **Partial Pages**: The last page may contain fewer members than `limit` if fewer remain.
+- **Zero Limit**: If `limit` is 0, an empty page is returned (useful for checking total count only).
+
+### Ordering guarantees
+
+Members are returned in the order they were added to the group. Pagination preserves this ordering
+across all pages. The ordering remains stable unless the member list is explicitly updated via
+`update_members` or `batch_add_members`.
+
+### Emitted events
+
+| Event | Fields | When |
+|---|---|---|
+| `GroupMembersPaginatedQueried` | `group_id` (topic), `offset`, `limit`, `total_members`, `returned_count` | Always on success |
+
+### Error conditions
+
+| Error | Condition |
+|---|---|
+| `NotFound` | No group exists with the given `id` |
+
+> **Panics** if the group does not exist (via `.unwrap()` in the contract entry point).
+
+### Storage effects
+
+- Reads the `AutoShareDetails` from persistent storage using `DataKey::AutoShare(id)`
+- Does NOT increment any query counter (unlike `get_group_members`)
+- No TTL bumps or additional storage writes beyond the read operation
+
+### Performance considerations
+
+- **Recommended for Large Groups**: Use this function instead of `get_group_members` for groups
+  with more than 20 members to reduce data transfer and improve response times.
+- **Consistent Performance**: The 20-member page size cap ensures predictable gas costs and
+  response times regardless of the requested `limit`.
+- **Read-Only Operation**: This function performs only storage reads; no writes or counter
+  increments occur, making it suitable for high-frequency polling.
+- **Event Overhead**: Each call emits a diagnostic event, which incurs minimal gas cost but
+  provides valuable off-chain analytics data.
+
+### Off-chain analytics
+
+The `GroupMembersPaginatedQueried` event enables off-chain systems to:
+- Monitor pagination patterns and identify optimal page sizes for different use cases
+- Track API usage and detect performance bottlenecks
+- Build analytics dashboards showing access patterns and popular groups
+- Optimize frontend pagination strategies based on actual usage data
+- Detect unusual access patterns for security monitoring
+
+### Consistency considerations
+
+- **Concurrent Modifications**: If the member list is updated between paginated queries,
+  subsequent pages may reflect the new state, potentially causing inconsistencies.
+- **Stable Reads**: For consistent multi-page reads, ensure no concurrent `update_members`
+  calls occur during the pagination sequence.
+- **Total Count**: The `total` field always reflects the current member count at query time,
+  which may differ across pages if concurrent updates occur.
+
+### Example usage
+
+```rust
+// Fetch the first page of members (up to 20)
+let page1 = client.get_group_members_paginated(&group_id, &0, &20);
+println!("Total members: {}", page1.total);
+println!("Returned: {}", page1.members.len());
+
+// Fetch the second page
+let page2 = client.get_group_members_paginated(&group_id, &20, &20);
+
+// Fetch all members across multiple pages
+let mut all_members = Vec::new(&env);
+let mut offset = 0u32;
+loop {
+    let page = client.get_group_members_paginated(&group_id, &offset, &20);
+    if page.members.is_empty() {
+        break;
+    }
+    for member in page.members.iter() {
+        all_members.push_back(member);
+    }
+    offset += page.members.len();
+}
+
+// Check total count without fetching members
+let page = client.get_group_members_paginated(&group_id, &0, &0);
+let total_count = page.total;
+```
+
+---
+
+## `get_group_members_query_count` — Retrieve Query Frequency Metrics
+
+Retrieves the cumulative number of times `get_group_members` has been called for a specific group.
+This function provides read-frequency metrics for off-chain analytics without incrementing the counter.
+
+### Entry point
+
+```rust
+pub fn get_group_members_query_count(
+    env: Env,
+    id: BytesN<32>,
+) -> u64
+```
+
+### Arguments
+
+| Parameter | Type | Description |
+|---|---|---|
+| `env` | `Env` | Soroban environment |
+| `id` | `BytesN<32>` | Unique group identifier |
+
+### How it works
+
+1. Reads the query counter from persistent storage at `DataKey::GroupMembersQueryCount(id)`.
+2. If the counter is greater than 0, bumps its TTL to prevent expiration.
+3. Returns the counter value (or 0 if the key does not exist).
+
+### Return value
+
+`u64` — The cumulative query count. Returns `0` if:
+- The group exists but `get_group_members` has never been called for it
+- The counter storage key does not exist
+
+### Storage effects
+
+- Reads the query counter from persistent storage
+- If the counter is greater than 0, bumps its TTL to prevent expiration
+- Does NOT increment the counter (read-only operation)
+
+### Emitted events
+
+This function does not emit any events.
+
+### Performance considerations
+
+- This is a lightweight read-only operation with minimal gas cost
+- Safe to call frequently for monitoring purposes
+- Does not validate that the group exists; returns 0 for non-existent groups
+
+### Example usage
+
+```rust
+// Check how many times the group members have been queried
+let query_count = client.get_group_members_query_count(&group_id);
+println!("Group has been queried {} times", query_count);
+
+// Use for analytics or rate limiting
+if query_count > 1000 {
+    // High-traffic group - consider caching strategies
+}
+```
+
+---
+
 ## Payment Flow Events
 
 The contract emits the following events for fund flow tracking:
