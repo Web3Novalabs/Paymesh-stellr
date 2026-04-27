@@ -131,6 +131,48 @@ fn test_deposit_large_amount_accepted() {
     assert_eq!(client.get_group_treasury_balance(&id, &token), large);
 }
 
+/// Deposit of the practical maximum (considering existing minted supply) is accepted.
+#[test]
+fn test_deposit_max_i128_amount_from_zero_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, token, client) = setup(&env);
+    let creator = Address::generate(&env);
+    let id = make_group(&env, &client, &token, &creator, 23);
+
+    let depositor = Address::generate(&env);
+    // make_group mints 10_000 to creator, so this is the largest additional mint
+    // that can be created without overflowing mock token total_supply.
+    let max_amount = i128::MAX - 10_000;
+    mint_tokens(&env, &token, &depositor, max_amount);
+
+    client.deposit_funds(&id, &token, &max_amount, &depositor);
+    assert_eq!(client.get_group_treasury_balance(&id, &token), max_amount);
+}
+
+/// Near-max additions are handled correctly when they stay in-range.
+#[test]
+fn test_deposit_near_max_accumulation_without_overflow() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, token, client) = setup(&env);
+    let creator = Address::generate(&env);
+    let id = make_group(&env, &client, &token, &creator, 24);
+
+    let depositor = Address::generate(&env);
+    let first = i128::MAX - 10_010;
+    let second = 10;
+    mint_tokens(&env, &token, &depositor, first + second);
+
+    client.deposit_funds(&id, &token, &first, &depositor);
+    client.deposit_funds(&id, &token, &second, &depositor);
+
+    assert_eq!(
+        client.get_group_treasury_balance(&id, &token),
+        first + second
+    );
+}
+
 // ─── History recording ───────────────────────────────────────────────────────
 
 /// Each deposit is appended to the group's deposit history.
@@ -408,6 +450,66 @@ fn test_failed_deposit_does_not_append_to_history() {
     let _ = client.try_deposit_funds(&id, &token, &-10, &depositor);
 
     assert_eq!(client.get_group_deposit_history(&id).len(), 1);
+}
+
+/// At the practical treasury ceiling, an additional deposit failure must not mutate state.
+#[test]
+fn test_ceiling_adjacent_failed_deposit_reverts_state() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, token, client) = setup(&env);
+    let creator = Address::generate(&env);
+    let id = make_group(&env, &client, &token, &creator, 25);
+
+    let depositor = Address::generate(&env);
+    let ceiling_amount = i128::MAX - 10_000;
+    mint_tokens(&env, &token, &depositor, ceiling_amount);
+
+    client.deposit_funds(&id, &token, &ceiling_amount, &depositor);
+    assert_eq!(
+        client.get_group_treasury_balance(&id, &token),
+        ceiling_amount
+    );
+    assert_eq!(client.get_group_deposit_history(&id).len(), 1);
+    assert_eq!(client.get_depositor_history(&depositor).len(), 1);
+
+    // depositor has no remaining balance, so transfer fails and deposit must revert atomically.
+    let result = client.try_deposit_funds(&id, &token, &1, &depositor);
+    assert!(result.is_err());
+
+    assert_eq!(
+        client.get_group_treasury_balance(&id, &token),
+        ceiling_amount
+    );
+    assert_eq!(client.get_group_deposit_history(&id).len(), 1);
+    assert_eq!(client.get_depositor_history(&depositor).len(), 1);
+}
+
+/// High-volume deposits should scale history and balances predictably.
+#[test]
+fn test_extreme_deposit_count_history_growth() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (_, token, client) = setup(&env);
+    let creator = Address::generate(&env);
+    let id = make_group(&env, &client, &token, &creator, 26);
+
+    let depositor = Address::generate(&env);
+    let count = 512usize;
+    mint_tokens(&env, &token, &depositor, count as i128);
+
+    for _ in 0..count {
+        client.deposit_funds(&id, &token, &1, &depositor);
+    }
+
+    let group_history = client.get_group_deposit_history(&id);
+    let depositor_history = client.get_depositor_history(&depositor);
+    assert_eq!(group_history.len(), count as u32);
+    assert_eq!(depositor_history.len(), count as u32);
+    assert_eq!(
+        client.get_group_treasury_balance(&id, &token),
+        count as i128
+    );
 }
 
 // ─── Post-reactivation ───────────────────────────────────────────────────────
