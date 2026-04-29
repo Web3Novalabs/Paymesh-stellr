@@ -16,4 +16,4 @@ Paymesh is a decentralized payment platform that automates group payment distrib
 
 ## Design
 
-[View Figma Prototype](https://www.figma.com/design/zD33uUXS5EthAYdjMI2SBB/Paymesh?node-id=463-3&p=f&t=q598aeVf9C7Qqqqs-0)
+[View Figma Prototype](https://www.figma.com/design/zD33uUXS5EthAYdjMI2SBB/Paymesh?node-id=463-3&p=f&t=q598aeVf9C7Qqqqs-0) ✅ Verified working
