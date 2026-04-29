@@ -4027,11 +4027,19 @@ pub fn set_protocol_fee(
 
     crate::base::events::emit_protocol_fee_updated(
         &env,
-        admin,
+        admin.clone(),
         old_fee,
         fee,
         old_recipient,
         recipient,
+    );
+
+    crate::base::events::emit_protocol_fee_changed(
+        &env,
+        admin,
+        None,
+        old_fee,
+        fee,
     );
 
     Ok(())

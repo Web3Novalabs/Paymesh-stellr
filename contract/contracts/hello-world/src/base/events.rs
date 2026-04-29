@@ -575,6 +575,36 @@ pub fn emit_protocol_fee_set(
     .publish(env);
 }
 
+/// Emitted by set_protocol_fee to signal a fee change for off-chain indexers.
+/// Topics carry the admin address for efficient filtering; group_id and the
+/// before/after basis-point values are in the untyped data payload.
+#[contractevent]
+#[derive(Clone)]
+pub struct ProtocolFeeChanged {
+    #[topic]
+    pub admin_address: Address,
+    /// None for a global fee update; Some(group_id) for a group-specific override.
+    pub group_id: Option<BytesN<32>>,
+    pub old_fee_bps: u32,
+    pub new_fee_bps: u32,
+}
+
+pub fn emit_protocol_fee_changed(
+    env: &Env,
+    admin_address: Address,
+    group_id: Option<BytesN<32>>,
+    old_fee_bps: u32,
+    new_fee_bps: u32,
+) {
+    ProtocolFeeChanged {
+        admin_address,
+        group_id,
+        old_fee_bps,
+        new_fee_bps,
+    }
+    .publish(env);
+}
+
 /// Emitted when get_group_members is queried for analytics tracking.
 #[contractevent]
 #[derive(Clone)]
